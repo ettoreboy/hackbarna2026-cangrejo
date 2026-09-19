@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     # Analyzer selection: nebius | gemini | fake. Falls back to any configured provider.
     analyzer_provider: str = Field(default="nebius", alias="ANALYZER_PROVIDER")
 
+    # How hard the analyzer looks at framing: standard | strict. Per-request override: ?rigor=.
+    # standard keeps the prompts byte-identical to the ones measured in docs/EVAL.md, so the
+    # published v0/v1 ablation stays valid; strict appends the blocks in backend/prompts/rigor.py.
+    analyzer_rigor: str = Field(default="standard", alias="ANALYZER_RIGOR")
+
     # Nebius Token Factory (primary). gpt-oss-120b at low reasoning effort measured 3.7 s on
     # the benchmark post with strict json_schema; Qwen3-235B took 9-16 s, Qwen3-30B-A3B 27 s.
     nebius_api_key: str = Field(default="", alias="NEBIUS_API_KEY")

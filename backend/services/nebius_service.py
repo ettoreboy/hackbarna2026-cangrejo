@@ -19,8 +19,8 @@ from pydantic import BaseModel
 
 from backend.config import Settings
 from backend.prompts.claim_prompt import SYSTEM_CLAIM, build_claim_prompt
-from backend.prompts.claims_prompt import SYSTEM_DISCOVERY, build_discovery_prompt
-from backend.prompts.context_prompt import SYSTEM_CHECK, SYSTEM_PROMPTS, build_check_prompt, build_user_prompt
+from backend.prompts.claims_prompt import build_discovery_prompt, discovery_prompt
+from backend.prompts.context_prompt import build_check_prompt, build_user_prompt, check_prompt, system_prompt
 from backend.schemas.analysis_schema import (
     AnalysisBody,
     AnalyzeRequest,
@@ -189,10 +189,14 @@ class NebiusAnalyzer:
         evidence: list[Source],
         background: list[Source],
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[AnalysisBody]:
-        system = SYSTEM_PROMPTS[prompt_version]
+        system = system_prompt(prompt_version, rigor)
         user = build_user_prompt(req, claim, evidence, background)
-        return await self._structured(self.model, system, user, AnalysisBody, max_tokens=1400)
+        # Strict rigor asks for every technique rather than the clearest one, so the signal list
+        # is longer and the budget has to grow with it: hitting the cap raises, it does not
+        # truncate. The cap is a ceiling, so standard runs bill exactly what they billed before.
+        return await self._structured(self.model, system, user, AnalysisBody, max_tokens=1400 if rigor == "standard" else 1800)
 
     # ------------------------------------------------------------------ two-stage
 
@@ -202,14 +206,15 @@ class NebiusAnalyzer:
         background: list[Source],
         max_claims: int = 4,
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[DiscoveryBody]:
-        system = SYSTEM_DISCOVERY[prompt_version]
+        system = discovery_prompt(prompt_version, rigor)
         user = build_discovery_prompt(req, background, max_claims)
         # The largest payload in the system: up to 4 claims with verbatim quotes, plus every
         # rhetorical signal with its quote, plus speaker context. reasoning_effort bills thinking
         # tokens into the same budget, and hitting the cap raises rather than salvaging, so a long
         # real post used to 502. 1100 was never measured against a long post; 2000 is.
-        return await self._structured(self.model, system, user, DiscoveryBody, max_tokens=2000)
+        return await self._structured(self.model, system, user, DiscoveryBody, max_tokens=2000 if rigor == "standard" else 2600)
 
     async def check_claim(
         self,
@@ -217,7 +222,8 @@ class NebiusAnalyzer:
         claim: ClaimCandidate,
         evidence: list[Source],
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[ClaimVerdict]:
-        system = SYSTEM_CHECK[prompt_version]
+        system = check_prompt(prompt_version, rigor)
         user = build_check_prompt(req, claim, evidence)
         return await self._structured(self.model, system, user, ClaimVerdict, max_tokens=600)

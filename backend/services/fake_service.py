@@ -37,6 +37,17 @@ _CLAIMS: dict[str, MainClaim] = {
     ),
     "example_left_mp": MainClaim(found=False, text="", quote=""),
     "example_centrist": MainClaim(found=False, text="", quote=""),
+    # The rigor fixtures argue rather than assert: "symbolic politics" is a contested
+    # characterisation and "won't stop terrorism" is a prediction, so neither is checkable.
+    # That is the point of the pair -- under standard rigor there is nothing to check and
+    # nothing much to flag, so the reader is shown an empty drawer for a post doing work.
+    "example_right_mp": MainClaim(found=False, text="", quote=""),
+    "example_green_mp": MainClaim(found=False, text="", quote=""),
+    "example_committee": MainClaim(
+        found=True,
+        text="The Federal Constitutional Court struck down data retention in 2010 and again in 2022.",
+        quote="the Federal Constitutional Court struck down in 2010 and again in 2022",
+    ),
     "destatis": MainClaim(
         found=True,
         text="Consumer prices in Germany rose 2.2% year on year in August 2026 according to preliminary figures.",
@@ -64,11 +75,50 @@ _SIGNALS: dict[str, list[Signal]] = {
         Signal(name="Middle Ground", evidence="Only sensible adults like us can save democracy"),
     ],
     "destatis": [],
+    # Standard rigor sees the charged adjective and the two-option framing, and stops there.
+    # The threat and the total fix are what STRICT_EXTRA adds.
+    "example_right_mp": [
+        Signal(name="Loaded Language", evidence="pure symbolic politics"),
+        Signal(name="False Dilemma", evidence="Cosmetic changes to criminal law and more citizen surveillance"),
+    ],
+    "example_green_mp": [
+        Signal(name="Loaded Language", evidence="pure symbolic politics"),
+        Signal(name="False Dilemma", evidence="Voluntary targets and another round of consultation"),
+    ],
+    # Criticises a policy on the record, cites a real ruling, asks for a proportionate thing
+    # before a real deadline. Nothing here is a technique, at either rigor level.
+    "example_committee": [],
     "troll_account": [
         Signal(name="Fear-mongering", evidence="the elites want you poor and scared"),
         Signal(name="Emotional Bait", evidence="wake up sheeple"),
     ],
 }
+
+# What strict rigor adds on top of _SIGNALS. The fake has to model the difference or the
+# offline compare (fake:v1 against fake:v1+strict) would prove nothing. These are exactly the
+# three patterns the standard cues miss: a presupposed threat, people named by a risk
+# category, and a total guaranteed fix. Nothing is added for the neutral or control handles.
+_STRICT_EXTRA: dict[str, list[Signal]] = {
+    "example_right_mp": [
+        Signal(name="Fear-mongering", evidence="won't stop terrorism"),
+        Signal(name="False Solution", evidence="watertight protection of our national borders"),
+        Signal(name="Dehumanization", evidence="all threats"),
+        Signal(name="Manufactured Urgency", evidence="immediate deportation"),
+    ],
+    "example_green_mp": [
+        Signal(name="Fear-mongering", evidence="won't stop the collapse"),
+        Signal(name="False Solution", evidence="an absolute ban on all fossil investment"),
+        Signal(name="Manufactured Urgency", evidence="immediate nationalisation"),
+    ],
+}
+
+# missing_context under strict: one clause naming what the framing does, then the missing fact,
+# in that order. Never why the author posted -- only what the text does.
+_MISSING_STRICT: dict[str, str] = {
+    "example_right_mp": "The post treats terrorism as an ongoing certainty without citing an incident or a trend, and gives no figure for how many people the category \"threats\" covers.",
+    "example_green_mp": "The post treats collapse as already under way without citing a projection, and gives no figure for what the voluntary targets have delivered so far.",
+}
+
 
 _MISSING: dict[str, str] = {
     "alice_weidel": "Irregular border crossings and heating costs are unrelated budget lines; the post gives no figure for either.",
@@ -78,6 +128,17 @@ _MISSING: dict[str, str] = {
     "destatis": "",
     "troll_account": "",
 }
+
+
+def _signals_for(handle: str, req: AnalyzeRequest, rigor: str) -> list[Signal]:
+    """The signal list a given rigor level produces for this author.
+
+    Dedup happens in the schema, so appending is safe even if a label repeats.
+    """
+    base = _SIGNALS.get(handle, [Signal(name="Loaded Language", evidence=req.post_text[:40])])
+    if rigor != "strict":
+        return base
+    return base + _STRICT_EXTRA.get(handle, [])
 
 
 def _default_claim(req: AnalyzeRequest) -> MainClaim:
@@ -204,9 +265,9 @@ class FakeAnalyzer:
 
     def __init__(self) -> None:
         self.extract_calls: list[AnalyzeRequest] = []
-        self.analyse_calls: list[tuple[AnalyzeRequest, MainClaim, list[Source], list[Source], str]] = []
-        self.discover_calls: list[tuple[AnalyzeRequest, list[Source], int, str]] = []
-        self.check_calls: list[tuple[AnalyzeRequest, ClaimCandidate, list[Source], str]] = []
+        self.analyse_calls: list[tuple[AnalyzeRequest, MainClaim, list[Source], list[Source], str, str]] = []
+        self.discover_calls: list[tuple[AnalyzeRequest, list[Source], int, str, str]] = []
+        self.check_calls: list[tuple[AnalyzeRequest, ClaimCandidate, list[Source], str, str]] = []
 
     def with_model(self, model: str) -> "FakeAnalyzer":
         """A twin that only *reports* a different model. Output stays deterministic.
@@ -232,8 +293,9 @@ class FakeAnalyzer:
         evidence: list[Source],
         background: list[Source],
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[AnalysisBody]:
-        self.analyse_calls.append((req, claim, evidence, background, prompt_version))
+        self.analyse_calls.append((req, claim, evidence, background, prompt_version, rigor))
         handle = req.author_handle.lower()
 
         if not claim.found:
@@ -255,8 +317,8 @@ class FakeAnalyzer:
 
         body = AnalysisBody(
             claim_check=check,
-            missing_context=_MISSING.get(handle, ""),
-            rhetorical_signals=_SIGNALS.get(handle, [Signal(name="Loaded Language", evidence=req.post_text[:40])]),
+            missing_context=(_MISSING_STRICT.get(handle) if rigor == "strict" else None) or _MISSING.get(handle, ""),
+            rhetorical_signals=_signals_for(handle, req, rigor),
             speaker_context=_speaker(req, background),
         )
         return StepOutcome(result=body, model=self.model, cost_usd=0.0)
@@ -278,8 +340,9 @@ class FakeAnalyzer:
         background: list[Source],
         max_claims: int = 4,
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[DiscoveryBody]:
-        self.discover_calls.append((req, background, max_claims, prompt_version))
+        self.discover_calls.append((req, background, max_claims, prompt_version, rigor))
         handle = req.author_handle.lower()
 
         if handle in _MULTI:
@@ -290,7 +353,7 @@ class FakeAnalyzer:
 
         body = DiscoveryBody(
             claims=drafts,
-            rhetorical_signals=_SIGNALS.get(handle, [Signal(name="Loaded Language", evidence=req.post_text[:40])]),
+            rhetorical_signals=_signals_for(handle, req, rigor),
             speaker_context=_speaker(req, background),
         )
         return StepOutcome(result=body, model=self.model, cost_usd=0.0)
@@ -301,8 +364,9 @@ class FakeAnalyzer:
         claim: ClaimCandidate,
         evidence: list[Source],
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[ClaimVerdict]:
-        self.check_calls.append((req, claim, evidence, prompt_version))
+        self.check_calls.append((req, claim, evidence, prompt_version, rigor))
         handle = req.author_handle.lower()
 
         if not evidence:
@@ -324,7 +388,10 @@ class FakeAnalyzer:
             )
 
         return StepOutcome(
-            result=ClaimVerdict(claim_check=check, missing_context=_MISSING.get(handle, "")),
+            result=ClaimVerdict(
+                claim_check=check,
+                missing_context=(_MISSING_STRICT.get(handle) if rigor == "strict" else None) or _MISSING.get(handle, ""),
+            ),
             model=self.model,
             cost_usd=0.0,
         )

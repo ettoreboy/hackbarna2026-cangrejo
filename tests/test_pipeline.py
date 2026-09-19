@@ -7,8 +7,17 @@ import pytest
 import respx
 
 from backend.prompts.claim_prompt import build_claim_prompt
-from backend.prompts.context_prompt import SYSTEM_PROMPT_V0, SYSTEM_PROMPT_V1, build_user_prompt
-from backend.prompts.taxonomy import normalize_label
+from backend.prompts.claims_prompt import SYSTEM_DISCOVERY_V1, discovery_prompt
+from backend.prompts.context_prompt import (
+    SYSTEM_CHECK_V1,
+    SYSTEM_PROMPT_V0,
+    SYSTEM_PROMPT_V1,
+    build_user_prompt,
+    check_prompt,
+    system_prompt,
+)
+from backend.prompts.rigor import STRICT_CONTEXT_BLOCK, STRICT_SIGNALS_BLOCK
+from backend.prompts.taxonomy import is_canonical, normalize_label
 from backend.schemas.analysis_schema import AnalyzeRequest, MainClaim
 from backend.services.background_service import BRAVE_SEARCH_URL
 from tests.conftest import FIXTURES, WIKI_RE, brave_ok, wiki_ok
@@ -215,3 +224,84 @@ async def test_the_post_fallback_respects_the_brave_budget():
 
     assert found == []
     assert brave.call_count == 0, "neither the claim search nor the post fallback may exceed the budget"
+
+
+# --------------------------------------------------------------------------- rigor
+
+
+def test_standard_rigor_leaves_every_prompt_byte_identical():
+    """The safety property of the whole knob.
+
+    docs/EVAL.md publishes measured numbers for these exact strings. If standard rigor ever
+    appends anything, that table silently stops describing the shipped prompt and the v0/v1
+    ablation becomes unreproducible. Strict is allowed to differ; standard is not.
+    """
+    assert system_prompt("v1", "standard") == SYSTEM_PROMPT_V1
+    assert system_prompt("v0", "standard") == SYSTEM_PROMPT_V0
+    assert discovery_prompt("v1", "standard") == SYSTEM_DISCOVERY_V1
+    assert check_prompt("v1", "standard") == SYSTEM_CHECK_V1
+    # An unknown level is not a way to sneak past the guard either.
+    assert system_prompt("v1", "nonsense") == SYSTEM_PROMPT_V1
+
+
+def test_strict_rigor_names_the_patterns_the_standard_cues_miss():
+    strict = system_prompt("v1", "strict")
+    assert strict.startswith(SYSTEM_PROMPT_V1), "strict appends, never rewrites"
+    # The three moves that went unflagged on a policy-register post.
+    assert "treated as settled fact is Fear-mongering" in strict
+    assert "False Solution" in strict
+    assert "risk category rather than as people" in strict
+    # The restraint guard has to survive, or neutral_restraint falls over.
+    assert "never finding technique in posts that inform" in strict
+    # Both existing rules stay intact: no intent-guessing, nothing asserted without evidence.
+    assert "never what the author wants" in strict
+    assert "still requires EVIDENCE" in strict
+
+
+def test_strict_rigor_reaches_the_two_stage_path():
+    """The drawer runs /claims then /analyze-claim, so discovery is the prompt that matters."""
+    assert STRICT_SIGNALS_BLOCK.strip() in discovery_prompt("v1", "strict")
+    assert STRICT_CONTEXT_BLOCK.strip() in check_prompt("v1", "strict")
+    # Stage 2 emits no signals, so it must not carry the signals block.
+    assert "rhetorical_signals:" not in check_prompt("v1", "strict").split("STRICT RIGOR")[-1]
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [("silver bullet", "False Solution"), ("panacea", "False Solution"), ("False Solution", "False Solution")],
+)
+def test_false_solution_is_canonical(raw, expected):
+    assert normalize_label(raw) == expected
+    assert is_canonical(expected)
+
+
+async def test_rigor_reaches_the_analyzer_and_changes_the_signals(client, fake_analyzer):
+    """Strict must actually alter the output, not merely be accepted as a query parameter."""
+    body = FIXTURES["merz_tenpoint"]["request"]
+    standard = await client.post("/api/v1/analyze", json=body)
+    strict = await client.post("/api/v1/analyze?rigor=strict", json=body)
+    assert standard.status_code == strict.status_code == 200
+
+    assert [c[-1] for c in fake_analyzer.analyse_calls] == ["standard", "strict"]
+
+    names_std = {s["name"] for s in standard.json()["analysis"]["rhetorical_signals"]}
+    names_strict = {s["name"] for s in strict.json()["analysis"]["rhetorical_signals"]}
+    assert names_std < names_strict, "strict must be a superset, never a different answer"
+    assert {"Fear-mongering", "False Solution"} <= names_strict
+    # The complaint that started this: the fear is in the post but not in the context line.
+    assert "terrorism" in strict.json()["analysis"]["missing_context"]
+
+
+async def test_standard_and_strict_do_not_share_a_cache_row(client):
+    body = FIXTURES["merz_tenpoint"]["request"]
+    await client.post("/api/v1/analyze", json=body)
+    hit = await client.post("/api/v1/analyze?rigor=strict", json=body)
+    assert hit.json()["cached"] is False, "a strict request must never be served a standard answer"
+
+
+async def test_strict_rigor_still_says_nothing_about_a_post_that_informs(client):
+    """The control that makes a higher Signal Recall mean anything at all."""
+    for key, cap in (("neutral_control", 0), ("policy_critique_control", 1)):
+        res = await client.post("/api/v1/analyze?rigor=strict", json=FIXTURES[key]["request"])
+        signals = res.json()["analysis"]["rhetorical_signals"]
+        assert len(signals) <= cap, f"{key} drew {[s['name'] for s in signals]} under strict rigor"

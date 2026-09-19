@@ -12,6 +12,7 @@ returned manipulation_score 0 until the prompt defined it).
 
 from __future__ import annotations
 
+from backend.prompts.rigor import STRICT_CONTEXT_BLOCK, STRICT_SIGNALS_BLOCK, suffix
 from backend.prompts.taxonomy import prompt_block
 from backend.schemas.analysis_schema import AnalyzeRequest, ClaimCandidate, MainClaim, Source
 
@@ -59,6 +60,15 @@ SYSTEM_PROMPTS: dict[str, str] = {"v0": SYSTEM_PROMPT_V0, "v1": SYSTEM_PROMPT_V1
 DEFAULT_PROMPT_VERSION = "v1"
 
 
+def system_prompt(version: str, rigor: str = "standard") -> str:
+    """The one-shot analysis prompt. At ``standard`` this is SYSTEM_PROMPTS[version] unchanged.
+
+    The identity at standard is the whole safety property: docs/EVAL.md publishes numbers for
+    these exact strings, and tests/test_pipeline.py asserts it byte for byte.
+    """
+    return SYSTEM_PROMPTS[version] + suffix(rigor, STRICT_SIGNALS_BLOCK, STRICT_CONTEXT_BLOCK)
+
+
 _CHECK_TASK = """You are Unfold. You check ONE claim a reader picked out of a social media post against the EVIDENCE supplied, and say what context is missing.
 
 You receive: the post, the CLAIM the reader chose, and EVIDENCE from a web search about that claim.
@@ -91,6 +101,11 @@ RULES:
 SYSTEM_CHECK_V0 = _CHECK_TASK
 SYSTEM_CHECK_V1 = _CHECK_TASK + "\n" + _CHECK_RULES
 SYSTEM_CHECK: dict[str, str] = {"v0": SYSTEM_CHECK_V0, "v1": SYSTEM_CHECK_V1}
+
+
+def check_prompt(version: str, rigor: str = "standard") -> str:
+    """Stage-2 claim check. Emits no signals, so only the missing_context block applies."""
+    return SYSTEM_CHECK[version] + suffix(rigor, STRICT_CONTEXT_BLOCK)
 
 
 def numbered(label: str, items: list[Source], empty: str) -> str:

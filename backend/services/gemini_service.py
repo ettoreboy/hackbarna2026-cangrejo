@@ -12,8 +12,8 @@ from pydantic import BaseModel
 
 from backend.config import Settings
 from backend.prompts.claim_prompt import SYSTEM_CLAIM, build_claim_prompt
-from backend.prompts.claims_prompt import SYSTEM_DISCOVERY, build_discovery_prompt
-from backend.prompts.context_prompt import SYSTEM_CHECK, SYSTEM_PROMPTS, build_check_prompt, build_user_prompt
+from backend.prompts.claims_prompt import build_discovery_prompt, discovery_prompt
+from backend.prompts.context_prompt import build_check_prompt, build_user_prompt, check_prompt, system_prompt
 from backend.schemas.analysis_schema import (
     AnalysisBody,
     AnalyzeRequest,
@@ -124,9 +124,10 @@ class GeminiAnalyzer:
         evidence: list[Source],
         background: list[Source],
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[AnalysisBody]:
         return await self._structured(
-            SYSTEM_PROMPTS[prompt_version],
+            system_prompt(prompt_version, rigor),
             build_user_prompt(req, claim, evidence, background),
             AnalysisBody,
             max_tokens=900,
@@ -138,9 +139,10 @@ class GeminiAnalyzer:
         background: list[Source],
         max_claims: int = 4,
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[DiscoveryBody]:
         return await self._structured(
-            SYSTEM_DISCOVERY[prompt_version],
+            discovery_prompt(prompt_version, rigor),
             build_discovery_prompt(req, background, max_claims),
             DiscoveryBody,
             max_tokens=1100,
@@ -152,9 +154,10 @@ class GeminiAnalyzer:
         claim: ClaimCandidate,
         evidence: list[Source],
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[ClaimVerdict]:
         return await self._structured(
-            SYSTEM_CHECK[prompt_version],
+            check_prompt(prompt_version, rigor),
             build_check_prompt(req, claim, evidence),
             ClaimVerdict,
             max_tokens=600,

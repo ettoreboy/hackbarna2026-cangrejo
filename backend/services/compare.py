@@ -148,17 +148,18 @@ async def run_compare(
             label=variant.resolved_label(),
             provider=variant.provider,
             prompt_version=variant.prompt_version,
+            rigor=variant.rigor,
             model=analyzer.model,
         )
         # Same key shape as routers/analyze.py, so a compare and a plain analyze share hits.
-        key = make_key(f"{analyzer.name}:{analyzer.model}:{variant.prompt_version}:{req.author_handle}", req.post_text)
+        key = make_key(f"{analyzer.name}:{analyzer.model}:{variant.prompt_version}{'' if variant.rigor == 'standard' else ':' + variant.rigor}:{req.author_handle}", req.post_text)
         hit = cache.get(key) if cache is not None else None
         if hit is not None:
             arm.response = hit.model_copy(update={"cached": True})
         else:
             try:
                 resp = await run_pipeline(
-                    req, analyzer, http, settings, variant.prompt_version, cache=search_cache
+                    req, analyzer, http, settings, variant.prompt_version, variant.rigor, cache=search_cache
                 )
             except AnalysisError as exc:
                 log.warning("compare arm %s failed: %s", arm.label, exc)

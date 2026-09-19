@@ -77,6 +77,7 @@ async def run_pipeline(
     http: httpx.AsyncClient,
     settings: Settings,
     prompt_version: str = "v1",
+    rigor: str = "standard",
     transcript: Transcript | None = None,
     cache: SearchCache | None = None,
 ) -> AnalyzeResponse:
@@ -108,7 +109,7 @@ async def run_pipeline(
 
     # Step 3.
     t0 = time.perf_counter()
-    body_outcome = await analyzer.analyse(req, claim, evidence, background, prompt_version=prompt_version)
+    body_outcome = await analyzer.analyse(req, claim, evidence, background, prompt_version=prompt_version, rigor=rigor)
     timings.analyse_ms = _ms(t0)
     body = body_outcome.result
 
@@ -160,6 +161,7 @@ async def discover_claims(
     http: httpx.AsyncClient,
     settings: Settings,
     prompt_version: str = "v1",
+    rigor: str = "standard",
     transcript: Transcript | None = None,
     cache: SearchCache | None = None,
 ) -> ClaimsResponse:
@@ -182,7 +184,7 @@ async def discover_claims(
 
     t0 = time.perf_counter()
     outcome, evidence = await asyncio.gather(
-        analyzer.discover(req, background, settings.max_claims, prompt_version=prompt_version),
+        analyzer.discover(req, background, settings.max_claims, prompt_version=prompt_version, rigor=rigor),
         _timed_evidence(),
     )
     timings.extract_ms = _ms(t0)
@@ -220,6 +222,7 @@ async def check_one_claim(
     http: httpx.AsyncClient,
     settings: Settings,
     prompt_version: str = "v1",
+    rigor: str = "standard",
     cache: SearchCache | None = None,
 ) -> ClaimAnalysisResponse:
     total_started = time.perf_counter()
@@ -241,7 +244,7 @@ async def check_one_claim(
 
     # Step 3: verdict on that claim.
     t0 = time.perf_counter()
-    outcome = await analyzer.check_claim(req, claim, evidence, prompt_version=prompt_version)
+    outcome = await analyzer.check_claim(req, claim, evidence, prompt_version=prompt_version, rigor=rigor)
     timings.analyse_ms = _ms(t0)
 
     check = _cited_only(outcome.result.claim_check, evidence)

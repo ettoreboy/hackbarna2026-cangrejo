@@ -47,7 +47,7 @@ def build_analyzer(settings: Settings, provider: str):
     raise SystemExit(f"unknown provider {provider}")
 
 
-async def run_one(item, analyzer, http, settings, cache, prompt_version, sem) -> dict:
+async def run_one(item, analyzer, http, settings, cache, prompt_version, rigor, sem) -> dict:
     async with sem:
         started = time.perf_counter()
         try:
@@ -55,7 +55,7 @@ async def run_one(item, analyzer, http, settings, cache, prompt_version, sem) ->
 
             resp = await run_pipeline(
                 AnalyzeRequest(**item.to_request()), analyzer, http, settings,
-                prompt_version=prompt_version, cache=cache,
+                prompt_version=prompt_version, rigor=rigor, cache=cache,
             )
         except AnalysisError as exc:
             return {"id": item.id, "group": item.group, "error": str(exc)}
@@ -102,6 +102,8 @@ async def main() -> int:
     ap.add_argument("--provider", default="nebius", choices=["nebius", "gemini", "fake"])
     ap.add_argument("--model", help="override the provider's model")
     ap.add_argument("--prompt-version", default="v1", choices=["v0", "v1"])
+    ap.add_argument("--rigor", default="standard", choices=["standard", "strict"],
+                    help="strict looks harder at framing; standard is the prompt docs/EVAL.md measured")
     ap.add_argument("--concurrency", type=int, default=4)
     ap.add_argument("--limit", type=int, help="only the first N items, for a smoke run")
     ap.add_argument("--no-evidence", action="store_true", help="skip Brave entirely")
@@ -119,6 +121,8 @@ async def main() -> int:
         records = payload["records"]
         args.provider, args.model_label = payload["provider"], payload["model"]
         args.prompt_version = payload["prompt_version"]
+        # Runs written before the knob existed carry no rigor field.
+        args.rigor = payload.get("rigor", "standard")
         report(score_run(records, payload["items"]), records, args)
         return 0
 
@@ -133,19 +137,20 @@ async def main() -> int:
     cache = SearchCache(settings.search_cache_path) if settings.search_cache_path else NullCache()
     before = cache.live_calls()
 
-    print(f"running {len(items)} posts · {args.provider}/{args.model_label} · prompt {args.prompt_version} · evidence {'off' if args.no_evidence else 'on'}", flush=True)
+    print(f"running {len(items)} posts · {args.provider}/{args.model_label} · prompt {args.prompt_version} · rigor {args.rigor} · evidence {'off' if args.no_evidence else 'on'}", flush=True)
     sem = asyncio.Semaphore(args.concurrency)
     async with httpx.AsyncClient(follow_redirects=True) as http:
-        records = await asyncio.gather(*(run_one(i, analyzer, http, settings, cache, args.prompt_version, sem) for i in items))
+        records = await asyncio.gather(*(run_one(i, analyzer, http, settings, cache, args.prompt_version, args.rigor, sem) for i in items))
 
     spent = cache.live_calls() - before
     set_tag = Path(args.set).stem
-    out = Path(args.out) if args.out else ROOT / f"tests/eval/results/{set_tag}_{args.provider}_{args.model_label.replace('/', '-')}_{args.prompt_version}.json"
+    out = Path(args.out) if args.out else ROOT / f"tests/eval/results/{set_tag}_{args.provider}_{args.model_label.replace('/', '-')}_{args.prompt_version}{'' if args.rigor == 'standard' else '_' + args.rigor}.json"
     if not out.is_absolute():
         out = ROOT / out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({
         "provider": args.provider, "model": args.model_label, "prompt_version": args.prompt_version,
+        "rigor": args.rigor,
         "brave_live_calls": spent, "items": items_raw, "records": list(records),
     }, indent=2))
 

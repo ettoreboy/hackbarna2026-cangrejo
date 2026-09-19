@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from backend.prompts.claim_prompt import CLAIM_DEFINITION, POST_CLOSE, POST_OPEN
 from backend.prompts.context_prompt import numbered
+from backend.prompts.rigor import STRICT_SIGNALS_BLOCK, suffix
 from backend.prompts.taxonomy import prompt_block
 from backend.schemas.analysis_schema import AnalyzeRequest, Source
 
@@ -47,6 +48,11 @@ RULES:
 SYSTEM_DISCOVERY_V0 = _TASK
 SYSTEM_DISCOVERY_V1 = _TASK + "\n" + _RULES + "\n" + prompt_block()
 SYSTEM_DISCOVERY: dict[str, str] = {"v0": SYSTEM_DISCOVERY_V0, "v1": SYSTEM_DISCOVERY_V1}
+
+
+def discovery_prompt(version: str, rigor: str = "standard") -> str:
+    """Stage-1 discovery. This is the prompt the extension's drawer actually runs on."""
+    return SYSTEM_DISCOVERY[version] + suffix(rigor, STRICT_SIGNALS_BLOCK)
 
 
 def build_discovery_prompt(req: AnalyzeRequest, background: list[Source], max_claims: int) -> str:

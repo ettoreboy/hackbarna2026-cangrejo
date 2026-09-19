@@ -72,5 +72,46 @@
       "claim_found": false,
       "background_must_not_contain": ["trusted expert"]
     }
+  },
+  "merz_tenpoint": {
+    "request": {
+      "author_handle": "example_right_mp",
+      "author_name": "Example Right MP",
+      "platform": "x",
+      "post_text": "The Merz government's ten-point plan is pure symbolic politics. Cosmetic changes to criminal law and more citizen surveillance won't stop terrorism. We need watertight protection of our national borders and the immediate deportation of all threats."
+    },
+    "expected": {
+      "claim_found": false,
+      "signals_any_of": ["Loaded Language", "False Dilemma"],
+      "strict_signals_all_of": ["Fear-mongering", "False Solution", "False Dilemma"],
+      "strict_min_signals": 4
+    }
+  },
+  "left_tenpoint": {
+    "request": {
+      "author_handle": "example_green_mp",
+      "author_name": "Example Green MP",
+      "platform": "x",
+      "post_text": "The government's ten-point climate package is pure symbolic politics. Voluntary targets and another round of consultation won't stop the collapse. We need an absolute ban on all fossil investment and the immediate nationalisation of every polluter."
+    },
+    "expected": {
+      "claim_found": false,
+      "signals_any_of": ["Loaded Language", "False Dilemma"],
+      "strict_signals_all_of": ["Fear-mongering", "False Solution", "False Dilemma"],
+      "strict_min_signals": 4
+    }
+  },
+  "policy_critique_control": {
+    "request": {
+      "author_handle": "example_committee",
+      "author_name": "Example Committee Member",
+      "platform": "x",
+      "post_text": "The ten-point plan relies on data retention, which the Federal Constitutional Court struck down in 2010 and again in 2022. Ministers have not said how this version differs. The committee should ask for that answer before Thursday's vote."
+    },
+    "expected": {
+      "claim_found": true,
+      "max_signals": 1,
+      "strict_max_signals": 1
+    }
   }
 }

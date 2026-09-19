@@ -22,6 +22,10 @@ VARIANTS ?= nebius:v1,nebius:v0
 # Two models of one provider. Both are priced in backend/services/pricing.py, so the cost row
 # in the side-by-side is a real number rather than "unpriced".
 MODELS   ?= nebius/openai/gpt-oss-120b:v1,nebius/Qwen/Qwen3-235B-A22B-Instruct-2507:v1
+# How hard the analyzer looks at framing. standard keeps every prompt byte for byte as
+# docs/EVAL.md measured it; strict appends the blocks in backend/prompts/rigor.py.
+RIGOR    ?= standard
+RIGOR_VARIANTS ?= nebius:v1,nebius:v1+strict
 LIMIT    ?=
 
 MODEL_ARG := $(if $(MODEL),--model $(MODEL),)
@@ -117,6 +121,10 @@ compare: ## Prompt v1 vs v0 on one model (VARIANTS=provider[/model][:prompt],...
 .PHONY: compare-models
 compare-models: ## Two Nebius models on one prompt (MODELS=...)
 	$(PY) scripts/compare.py --post $(POST) --variants $(MODELS)
+
+.PHONY: compare-rigor
+compare-rigor: ## Standard vs strict rigor, one model and one prompt (POST=)
+	$(PY) scripts/compare.py --post $(POST) --variants $(RIGOR_VARIANTS)
 
 ## ---------------------------------------------------------------- end to end
 

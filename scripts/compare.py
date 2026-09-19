@@ -6,12 +6,13 @@
     .venv/bin/python scripts/compare.py --text "..." --handle someone --name "Some One"
     ANALYZER_PROVIDER=fake .venv/bin/python scripts/compare.py --post spec_example --variants fake:v0,fake:v1
 
-An arm is `provider[/model][:prompt_version]`. Naming the model is how two models of one
+An arm is `provider[/model][:prompt_version[+rigor]]`. Naming the model is how two models of one
 provider are compared, which is the comparison this project can actually run: one Nebius key
 reaches the whole catalogue, and holding the provider fixed isolates the weights from the
 endpoint, the auth and the JSON handling.
 
     --variants nebius:v1,nebius:v0                      prompts, one model
+    --variants nebius:v1,nebius:v1+strict               rigor, one prompt and one model
     --variants nebius/openai/gpt-oss-120b:v1,\
                nebius/Qwen/Qwen3-235B-A22B-Instruct-2507:v1    models, one prompt
 
@@ -23,6 +24,7 @@ Writes the full CompareResponse as JSON. Non-zero exit when every arm failed.
 from __future__ import annotations
 
 import argparse
+import re
 import asyncio
 import json
 import sys
@@ -48,21 +50,29 @@ FIXTURES = json.loads((ROOT / "tests/fixtures/posts.json").read_text())
 DEFAULT_VARIANTS = "nebius/openai/gpt-oss-120b:v1,nebius/Qwen/Qwen3-235B-A22B-Instruct-2507:v1"
 
 
-def parse_variant(chunk: str) -> Variant:
-    """`provider[/model][:prompt_version]` -> one Variant. A bare provider name means v1.
+# A tail is a prompt version, optionally carrying a rigor level: v1, v0, v1+strict.
+_TAIL = re.compile(r"^(v[01])(?:\+(standard|strict))?$")
 
-    The prompt version is split off the right, and only when it literally reads v0 or v1.
+
+def parse_variant(chunk: str) -> Variant:
+    """`provider[/model][:prompt_version[+rigor]]` -> one Variant. A bare provider means v1.
+
+    The tail is split off the right, and only when it matches a prompt version exactly.
     That is what lets a model id keep its own slashes and colons: `openai/gpt-oss-120b` is a
     model, and a fine-tune id full of colons stays intact.
+
+    Rigor rides on the version rather than taking a segment of its own, because the two are
+    read together -- `v1+strict` is "the guarded prompt, looking harder" -- and because a
+    third colon-separated field could not be told apart from a fine-tune id.
     """
-    spec, version = chunk.strip(), "v1"
+    spec, version, rigor = chunk.strip(), "v1", "standard"
     head, sep, tail = spec.rpartition(":")
-    if sep and tail in ("v0", "v1"):
-        spec, version = head, tail
+    if sep and (m := _TAIL.match(tail)):
+        spec, version, rigor = head, m.group(1), m.group(2) or "standard"
     provider, _, model = spec.partition("/")
     if not provider:
         raise SystemExit(f"variant {chunk!r} names no provider")
-    return Variant(provider=provider, model=model, prompt_version=version)
+    return Variant(provider=provider, model=model, prompt_version=version, rigor=rigor)
 
 
 def parse_variants(spec: str) -> list[Variant]:

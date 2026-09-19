@@ -327,6 +327,10 @@ class Variant(BaseModel):
     provider: str = Field(..., min_length=1, description="nebius | gemini | fake")
     model: str = Field(default="", max_length=128, description="Provider model id; empty = the provider's configured default")
     prompt_version: Literal["v0", "v1"] = "v1"
+    # How hard the arm looks at framing. Orthogonal to prompt_version: v1 is the guardrails,
+    # rigor is the scrutiny level applied on top of them. "standard" leaves every prompt byte
+    # for byte as docs/EVAL.md measured it, so a rigor arm never disturbs the v0/v1 ablation.
+    rigor: Literal["standard", "strict"] = "standard"
     label: str = Field(default="", max_length=64, description="Display name; defaults to provider:prompt_version")
 
     def resolved_label(self) -> str:
@@ -338,9 +342,9 @@ class Variant(BaseModel):
         """
         if self.label:
             return self.label
-        if not self.model:
-            return f"{self.provider}:{self.prompt_version}"
-        return f"{self.model.rsplit('/', 1)[-1]}:{self.prompt_version}"
+        head = self.provider if not self.model else self.model.rsplit("/", 1)[-1]
+        tail = self.prompt_version if self.rigor == "standard" else f"{self.prompt_version}+{self.rigor}"
+        return f"{head}:{tail}"
 
 
 class CompareRequest(AnalyzeRequest):
@@ -351,6 +355,7 @@ class VariantArm(BaseModel):
     label: str
     provider: str
     prompt_version: str
+    rigor: str = "standard"
     model: str = ""
     response: AnalyzeResponse | None = None
     error: str | None = Field(default=None, description="Set when this arm failed; the other arms still ran")

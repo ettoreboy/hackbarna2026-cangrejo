@@ -42,6 +42,7 @@ async def main() -> int:
     ap.add_argument("--fast-model", help="override NEBIUS_FAST_MODEL (claim extraction)")
     ap.add_argument("--post", default="weidel_immigration", help=f"one of {', '.join(FIXTURES)}")
     ap.add_argument("--prompt-version", default="v1", choices=["v0", "v1"])
+    ap.add_argument("--rigor", default="standard", choices=["standard", "strict"])
     ap.add_argument("--list-models", action="store_true")
     args = ap.parse_args()
 
@@ -91,7 +92,7 @@ async def main() -> int:
     started = time.perf_counter()
     async with httpx.AsyncClient(follow_redirects=True) as http:
         try:
-            resp = await run_pipeline(req, analyzer, http, settings, prompt_version=args.prompt_version)
+            resp = await run_pipeline(req, analyzer, http, settings, prompt_version=args.prompt_version, rigor=args.rigor)
         except AnalysisError as exc:
             line(BAD, f"pipeline failed: {exc}")
             return 1
@@ -100,7 +101,7 @@ async def main() -> int:
     mode = "strict json_schema" if all(analyzer._strict_ok.get(m, True) for m in (analyzer.model, analyzer.fast_model)) else "json_object fallback"
     line(OK, f"pipeline completed via {mode}")
 
-    render_analysis(resp.analysis, f"POST ANALYSIS — @{req.author_handle} ({args.post}, prompt {args.prompt_version})")
+    render_analysis(resp.analysis, f"POST ANALYSIS — @{req.author_handle} ({args.post}, prompt {args.prompt_version}, rigor {args.rigor})")
     render_timings(resp, elapsed_ms)
 
     problems = response_problems(resp, req.post_text)

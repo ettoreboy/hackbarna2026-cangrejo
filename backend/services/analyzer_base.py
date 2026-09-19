@@ -56,6 +56,7 @@ class Analyzer(Protocol):
         evidence: list[Source],
         background: list[Source],
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[AnalysisBody]: ...
 
     # -- two-stage claim picker (/claims, /analyze-claim) --------------------
@@ -66,6 +67,7 @@ class Analyzer(Protocol):
         background: list[Source],
         max_claims: int = 4,
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[DiscoveryBody]:
         """Stage 1: every checkable claim, the rhetorical signals, and who is speaking."""
         ...
@@ -76,6 +78,7 @@ class Analyzer(Protocol):
         claim: ClaimCandidate,
         evidence: list[Source],
         prompt_version: str = "v1",
+        rigor: str = "standard",
     ) -> StepOutcome[ClaimVerdict]:
         """Stage 2: verdict on the one claim the reader picked, plus what context is missing."""
         ...

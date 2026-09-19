@@ -33,6 +33,7 @@ sys.path.insert(0, str(ROOT))
 
 from backend.config import Settings  # noqa: E402
 from backend.eval.metrics import _adherent  # noqa: E402
+from backend.prompts.taxonomy import normalize_label  # noqa: E402
 
 # --------------------------------------------------------------------------- record helpers
 
@@ -86,6 +87,20 @@ def m_neutral_restraint(rec: dict, item: dict) -> float | None:
     return 1.0 if not _signals(rec) else 0.0
 
 
+def m_signal_recall(rec: dict, item: dict) -> float | None:
+    """Did this post come back carrying the technique it was written to exhibit?
+
+    The counterweight to neutral-restraint. Every other metric on this dashboard punishes
+    saying too much; a model that returned no signals at all scored well on all of them.
+    Only applies to posts that were written against a target technique.
+    """
+    target = item.get("signal_target") or ""
+    if not target:
+        return None
+    want = normalize_label(target)
+    return 1.0 if want in {normalize_label(s["name"]) for s in _signals(rec)} else 0.0
+
+
 def m_grounded_speaker(rec: dict, item: dict) -> float | None:
     """Every eval author is invented, so with no source the only correct answer is the exact
     string "Unknown author". Anything else is a biography the model made up."""
@@ -126,6 +141,13 @@ ITEM_METRICS: dict[str, tuple[str, Callable[[dict, dict], float | None]]] = {
         "1.0 when a purely informational post (a statistics release, a timetable change) comes "
         "back with zero rhetorical signals. Only applies to posts tagged neutral.",
         m_neutral_restraint,
+    ),
+    "signal-recall": (
+        "1.0 when the post comes back carrying the rhetorical technique it was written to "
+        "exhibit. The counterweight to neutral-restraint: read the two together, because "
+        "recall alone rewards a model that flags everything and restraint alone rewards a "
+        "model that flags nothing. Only applies to posts with a target technique.",
+        m_signal_recall,
     ),
     "grounded-speaker": (
         "1.0 when a post whose author has no supplied source gets the exact speaker background "

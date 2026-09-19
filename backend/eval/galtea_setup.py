@@ -111,6 +111,21 @@ First decide from the input whether the post is purely informational: it reports
 Ignore the verdict, the sources and the speaker line.""",
         ["input", "actual_output"],
     ),
+    "Framing named on a persuasive post": (
+        "framing-named-when-persuasive",
+        "A post whose claim checks out, or cannot be checked, must still have its rhetorical work named. A correct claim is not a neutral post.",
+        """Score ONLY this: when the post argues, does the analysis name how it argues?
+
+First decide from the input whether the post is persuasive: it argues for a position, attacks one, demands an action, or characterises a policy or a group.
+
+- If the post is NOT persuasive (it purely reports a figure, a date or a result), score 1.0 regardless of what the analysis says. This metric does not apply to it.
+- If the post IS persuasive: score 1.0 when the analysis names the techniques the post uses AND, where the post's force comes from its framing rather than its facts, the missing-context line says so; 0.5 when it names one technique but misses an obvious second, or names techniques while the missing-context line addresses only figures; 0.0 when it lists no signals at all, or treats a 'supported' or 'unverifiable' verdict as though it settled the post.
+
+A threat the post assumes rather than argues for counts as rhetorical work. So does a total, guaranteed fix offered for a complex problem.
+
+Ignore whether the verdict is correct, and ignore the speaker line.""",
+        ["input", "actual_output"],
+    ),
 }
 
 

@@ -43,6 +43,13 @@ any change to either side (rule 3 above).
 
 `ANALYZER_PROVIDER` = `nebius` (default, Token Factory, `openai/gpt-oss-120b`) | `gemini` (baseline, **no key set — every gemini arm fails**) | `fake` (deterministic, offline). Per-request override: `?provider=`. Prompt versions: `?prompt_version=v0` (spec prompt, the "before") or `v1` (guarded, default).
 
+`ANALYZER_RIGOR` / `?rigor=` = `standard` (default) | `strict`, orthogonal to the prompt version:
+the version picks the guardrails, rigor picks the scrutiny on top of them. **`standard` must stay
+byte-identical to the prompts docs/EVAL.md measured** — `tests/test_pipeline.py` asserts it, because
+otherwise the published v0/v1 ablation silently stops describing the shipped prompt. Strict adds the
+blocks in `backend/prompts/rigor.py` and nothing else. `make compare-rigor POST=merz_tenpoint` runs
+the two arms side by side.
+
 Validate the key and the whole pipeline in one command. Run it after any prompt change:
 
 ```bash

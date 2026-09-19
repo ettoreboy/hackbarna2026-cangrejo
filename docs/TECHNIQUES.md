@@ -107,6 +107,14 @@ Presenting two options as the only ones when more exist.
 - **Example:** "Either we stop all immigration or we lose our welfare state."
 - **Note:** use **False Dilemma** as the canonical label; treat "False Dichotomy" as a synonym on input.
 
+### **False Solution**
+Offering a total, guaranteed fix for a problem that is complex, contested or multi-causal. The
+promise does the persuading: if the fix really were complete, no trade-off would need arguing.
+- **Looks like:** an absolute adjective attached to a policy, with no mechanism, cost or exception named.
+- **Cues:** watertight, completely seal, once and for all, simply deport, absolute ban, all it takes is, end X overnight.
+- **Example:** "Watertight protection of our borders and the immediate deportation of all threats."
+- **Prompt hint:** added in v3.2. Distinguish from an ordinary policy proposal by the absoluteness, not by whether you agree with it: "tighter border checks" is a proposal, "watertight borders" is a False Solution. It pairs with Fear-mongering — a total threat wants a total fix — and the pair is worth more than either label alone.
+
 ### **Ad Hominem**
 Attacking the person instead of the argument.
 - **Cues:** the reply addresses character, motive, looks, past, not the claim.

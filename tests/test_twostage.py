@@ -72,7 +72,7 @@ async def test_claim_whose_quote_is_absent_is_dropped(client, fake_analyzer, mon
     from backend.schemas.analysis_schema import ClaimDraft, DiscoveryBody, SpeakerContext
     from backend.services.analyzer_base import StepOutcome
 
-    async def fabricate(req, background, max_claims=4, prompt_version="v1"):
+    async def fabricate(req, background, max_claims=4, prompt_version="v1", rigor="standard"):
         return StepOutcome(
             result=DiscoveryBody(
                 claims=[
@@ -197,7 +197,7 @@ async def test_invented_source_is_stripped(client, fake_analyzer, monkeypatch):
     from backend.schemas.analysis_schema import ClaimCheck, ClaimSource, ClaimVerdict
     from backend.services.analyzer_base import StepOutcome
 
-    async def hallucinate(req, claim, evidence, prompt_version="v1"):
+    async def hallucinate(req, claim, evidence, prompt_version="v1", rigor="standard"):
         return StepOutcome(
             result=ClaimVerdict(
                 claim_check=ClaimCheck(

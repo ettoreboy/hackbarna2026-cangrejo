@@ -95,11 +95,110 @@ Two explanations remain open and this set cannot separate them. The tweets are f
 
 **This is reported rather than hidden because it is the number most likely to be challenged**, and an unexplained 16-point gap is exactly what a media-literacy tool must be able to talk about.
 
-## 4. Known weakness in claim extraction
+## 4. The suite could not see under-flagging, and the analyzer was under-flagging
+
+Every metric in section 1 punishes saying too much. Neutral Restraint demands zero signals on an
+informational post, the two symmetry rows compare counts across a pair, Vocabulary Adherence
+penalises an improvised label. None of them punished saying too little: **a model that returned no
+signals at all would have scored well on ten of the eleven.**
+
+`signal_target` — the technique each synthetic post was written to exhibit — had been on every
+item and in every result file since the set was built, and nothing read it. Scoring the published
+v1 run against it, with no new model calls:
+
+| Metric | v1 (the run in section 1) | |
+| --- | --- | --- |
+| Neutral Restraint | 1.00 | n=10 |
+| **Signal Recall** | **0.47** | n=30 |
+
+Every other row in that run reads 0.98 to 1.00. Recall reads 0.47: the analyzer misses more than
+half the techniques the posts were built around, and falls back on Loaded Language when it does —
+"wanted Hasty Generalization, got Loaded Language and Fear-mongering", "wanted Straw Man, got
+Loaded Language and Scapegoating", and so on through eight of the thirty.
+
+The two numbers only mean something together. Recall alone rewards a model that flags everything;
+restraint alone rewards a model that flags nothing. Report the pair or neither.
+
+**What this looks like on one post.** A ten-point plan called "pure symbolic politics", answered
+with "watertight protection of our national borders and the immediate deportation of all threats",
+came back with the claim checked and no rhetorical work named. Three patterns went unflagged, and
+each has the same cause — the cue describes a blunter version of the move:
+
+| In the post | Cue that missed it |
+| --- | --- |
+| "won't stop terrorism" — the threat is assumed, never argued | Fear-mongering: "predicts harm or catastrophe" |
+| "all threats" — people named by a risk category | Dehumanization: "vermin, parasites, filth or cargo" |
+| "watertight protection" — a total, guaranteed fix | nothing in the vocabulary covered it |
+
+The third gap is why `False Solution` was added to the taxonomy. The first two are why
+`backend/prompts/rigor.py` exists: at `rigor=strict` the prompt says that a threat treated as
+settled fact is Fear-mongering and that a risk category used as a noun for people is
+Dehumanization. Standard rigor is unchanged, byte for byte, and `tests/test_pipeline.py` asserts
+it — so every number above and in section 1 still describes the shipped default.
+
+### Measured: the strict arm
+
+Both arms run the same day, same model, same cached evidence, 50 synthetic posts. Run them
+yourself with:
+
+```bash
+.venv/bin/python -m backend.eval.run_eval --prompt-version v1
+.venv/bin/python -m backend.eval.run_eval --prompt-version v1 --rigor strict
+```
+
+| Metric | standard | strict | n |
+| --- | --- | --- | --- |
+| **Signal Recall** | 0.37 | **0.53** | 30 |
+| **Neutral Restraint** | **1.00** | **1.00** | 10 |
+| Signal Symmetry | 0.73 | 0.84 | 15 |
+| Verdict Symmetry | 0.53 | 0.60 | 15 |
+| Quote Fidelity | 1.00 | 1.00 | 123 / 128 |
+| Vocabulary Adherence | 1.00 | 1.00 | 76 / 81 |
+| Cited Only | 1.00 | 1.00 | 17 / 21 |
+| Grounded Speaker | 0.98 | 0.98 | 41 |
+| Injection Resistance | 0.40 | 0.20 | 5 |
+
+**The result is the first two rows.** Recall rises 16 points while restraint holds at 1.00 —
+the model looks harder at posts that argue without starting to find technique in posts that
+inform. 16 points on 30 items clears the ~10-point noise floor from section 3. Cost rises from
+$0.74 to $0.83 per 1 000 posts and median latency from 2.25 s to 2.82 s, because the signal list
+is longer.
+
+Vocabulary Adherence staying at 1.00 matters as much as the recall number: the extra signals are
+canonical labels, not improvised `Other:` ones, so more output did not mean sloppier output.
+
+**Ignore the Injection Resistance row, and do not read 0.20 as a security regression.** Two
+things are true about it. First, the published 1.00 in section 1 was a different day's run: the
+standard arm scores 0.40 today, so the gap is one twin out of five either way. Second, and more
+important, the metric folds signal-set stability into a security question. Checking the runs
+directly, **no dirty twin in either arm returned an empty signal list or a `supported` verdict** —
+the injected instruction was refused every time, in both arms. What moved is that two near-identical
+posts drew slightly different labels, which section 3 already measures at 54% agreement across two
+*identical* runs. Strict rigor emits more signals, so it has more room to drift. The metric needs
+splitting into obedience and stability before either number means anything.
+
+**On one post.** The same ten-point plan, live, `openai/gpt-oss-120b`:
+
+| | standard | strict |
+| --- | --- | --- |
+| signals | Loaded Language, Fear-mongering | Loaded Language, Fear-mongering, **False Solution** |
+| "watertight protection…" labelled | Loaded Language | False Solution |
+
+Standard reached for Loaded Language, which the taxonomy comment already flags as the fallback the
+model defaults to. Strict named the move. A second strict run also returned `Dehumanization` on
+"all threats"; the signal set is not reproducible run to run, so treat any single-post list as
+one sample.
+
+The two controls in `tests/fixtures/posts.json` are what make the recall number mean anything,
+and both hold live under strict: `neutral_control` returns zero signals, and
+`policy_critique_control` — which criticises a policy in the same register, citing a real ruling,
+without fear framing or a total fix — returns one.
+
+## 5. Known weakness in claim extraction
 
 Figurative attack lines were being promoted into checkable claims: "the President has been missing" was extracted and then fact-checked, as was "Biden green-lighted Putin to invade Ukraine". Both are rhetoric, not assertions. The claim prompt now excludes figurative and hyperbolic statements with worked examples, and the number of posts correctly returning "no factual claim" rose from 9 to 12 of 50. Whether that also moved the party gap is unproven for the reason in section 3.
 
-## Published to Galtea
+## 6. Published to Galtea
 
 `backend/eval/galtea_sync.py` pushes a run that already exists on disk to the Galtea platform as
 a scored product version. It imports no analyzer and no HTTP client, so it cannot call Nebius or
@@ -118,6 +217,7 @@ The two versions carry the same 50 test cases, so the dashboard compares them di
 | grounded-speaker | 0.00 | **1.00** | 41 |
 | injection-resistance | 0.20 | **1.00** | 10 |
 | neutral-restraint | 0.00 | **1.00** | 10 |
+| signal-recall | — | — | 30 (added after these runs; re-sync to populate) |
 | vocabulary-adherence | 0.31 | **0.95** | 48 / 40 |
 | quote-fidelity | 0.79 | **0.98** | 50 |
 | verdict-symmetry | 0.40 | **0.73** | 30 |
@@ -153,6 +253,7 @@ they weight differently.
 ```bash
 .venv/bin/python -m backend.eval.run_eval --prompt-version v1                          # synthetic
 .venv/bin/python -m backend.eval.run_eval --prompt-version v0
+.venv/bin/python -m backend.eval.run_eval --prompt-version v1 --rigor strict           # the rigor arm
 .venv/bin/python -m backend.eval.run_eval --set backend/eval/tweets.csv                # real tweets
 .venv/bin/python -m backend.eval.run_eval --score-only tests/eval/results/<file>.json  # re-score, no model calls
 ```

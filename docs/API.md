@@ -32,7 +32,16 @@ Deterministic v3 responses, no API keys. Handles `Alice_Weidel`, `example_migran
 
 ## `POST /api/v1/analyze`
 
-Query params, all optional: `provider=nebius|gemini|fake`, `prompt_version=v0|v1`, `nocache=true`.
+Query params, all optional: `provider=nebius|gemini|fake`, `prompt_version=v0|v1`, `rigor=standard|strict`, `nocache=true`.
+
+`rigor` is how hard the analyzer looks at framing, and it is orthogonal to `prompt_version`:
+the version selects the guardrails, rigor selects the scrutiny applied on top of them.
+`standard` (the default, set by `ANALYZER_RIGOR`) leaves every prompt byte for byte as
+`docs/EVAL.md` measured it. `strict` asks for every technique rather than the clearest one,
+treats a presupposed threat as Fear-mongering, and lets `missing_context` name what the
+framing does as well as which fact is absent. It returns the same fields; the signal list is
+longer and `missing_context` is fuller. Nothing about the response shape changes, so a client
+that ignores the parameter is unaffected.
 
 Request (unchanged from v2):
 
@@ -134,7 +143,8 @@ Request is an `/analyze` request plus `variants`. A variant is:
 | `provider` | yes | `nebius` \| `gemini` \| `fake` |
 | `model` | no | A model id for that provider. Empty means the provider's configured default. |
 | `prompt_version` | no | `v0` or `v1`, default `v1` |
-| `label` | no | Display name. Defaults to `provider:prompt_version`, or to `<short model>:<version>` when `model` is set. |
+| `rigor` | no | `standard` or `strict`, default `standard` |
+| `label` | no | Display name. Defaults to `provider:prompt_version`, or to `<short model>:<version>` when `model` is set. A non-default rigor is appended as `+strict`. |
 
 **`model` is the only place in the API where a model can be chosen.** The model is internal
 configuration everywhere else: `/analyze`, `/claims` and `/analyze-claim` take no model
@@ -218,7 +228,7 @@ Notes for anyone consuming this:
   arms shared via the search cache. Both are present for the same reason as on `/analyze`: the
   runner should be able to show what every arm was judged against, once, not per arm.
 
-CLI equivalent, no server needed. An arm there is `provider[/model][:prompt_version]`:
+CLI equivalent, no server needed. An arm there is `provider[/model][:prompt_version[+rigor]]`:
 
 ```bash
 make compare-models                       # two Nebius models, prompt v1
@@ -251,7 +261,7 @@ search plus one model call.
 
 ### `POST /api/v1/claims`
 
-Request: identical to `/analyze`. Query params: `provider`, `prompt_version`, `nocache`.
+Request: identical to `/analyze`. Query params: `provider`, `prompt_version`, `rigor`, `nocache`.
 
 ```json
 {
@@ -410,7 +420,7 @@ Bodies are `{"detail": "..."}`. Examples in `tests/fixtures/responses_v3/error_*
 
 ## Caching
 
-Identical `(provider, model, prompt_version, handle, text)` within `CACHE_TTL_SECONDS` (default 24 h) returns `cached: true` with `latency_ms: 0` and makes no model call. `?nocache=true` bypasses.
+Identical `(provider, model, prompt_version, rigor, handle, text)` within `CACHE_TTL_SECONDS` (default 24 h) returns `cached: true` with `latency_ms: 0` and makes no model call. `?nocache=true` bypasses.
 
 **The cache is what makes an answer repeatable.** The model is not: Nebius serves `gpt-oss-120b` from vLLM across four GPUs, so the same prompt at temperature 0 returns different text run to run — measured at 1, 2 or 3 rhetorical signals on one post across five identical calls. A fixed `seed` does not help; five calls at `seed=7` gave five distinct answers. So a post is analysed once and the answer is kept.
 

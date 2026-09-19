@@ -52,18 +52,24 @@ async def analyze(
     request: Request,
     provider: str | None = Query(default=None, description="nebius | gemini | fake; defaults to ANALYZER_PROVIDER"),
     prompt_version: str = Query(default="v1", pattern="^v[01]$", description="v0 = task only, v1 = guarded"),
+    rigor: str | None = Query(default=None, pattern="^(standard|strict)$",
+                             description="standard = as measured in docs/EVAL.md; strict = look harder at framing"),
     nocache: bool = Query(default=False),
 ) -> AnalyzeResponse:
     analyzer = pick_analyzer(request, provider)
     cache = request.app.state.cache
+    rigor = rigor or request.app.state.settings.analyzer_rigor
+    # Only non-default rigor joins the cache key, so rows written before the knob
+    # existed stay reachable and a strict run can never serve a standard answer.
+    rigor_key = "" if rigor == "standard" else f":{rigor}"
 
-    key = make_key(f"{analyzer.name}:{analyzer.model}:{prompt_version}:{req.author_handle}", req.post_text)
+    key = make_key(f"{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}", req.post_text)
     if not nocache and (hit := cache.get(key)) is not None:
         return hit.model_copy(update={"cached": True, "latency_ms": 0})
 
     try:
         response = await run_pipeline(
-            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version,
+            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version, rigor,
             cache=request.app.state.search_cache,
         )
     except AnalysisError as exc:
@@ -83,6 +89,8 @@ async def claims(
     request: Request,
     provider: str | None = Query(default=None, description="nebius | gemini | fake; defaults to ANALYZER_PROVIDER"),
     prompt_version: str = Query(default="v1", pattern="^v[01]$"),
+    rigor: str | None = Query(default=None, pattern="^(standard|strict)$",
+                             description="standard = as measured in docs/EVAL.md; strict = look harder at framing"),
     nocache: bool = Query(default=False),
 ) -> ClaimsResponse:
     """Stage 1: what is checkable in this post, how it is written, and who is speaking.
@@ -91,14 +99,18 @@ async def claims(
     """
     analyzer = pick_analyzer(request, provider)
     cache = request.app.state.cache
+    rigor = rigor or request.app.state.settings.analyzer_rigor
+    # Only non-default rigor joins the cache key, so rows written before the knob
+    # existed stay reachable and a strict run can never serve a standard answer.
+    rigor_key = "" if rigor == "standard" else f":{rigor}"
 
-    key = make_key(f"claims:{analyzer.name}:{analyzer.model}:{prompt_version}:{req.author_handle}", req.post_text)
+    key = make_key(f"claims:{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}", req.post_text)
     if not nocache and (hit := cache.get(key)) is not None:
         return hit.model_copy(update={"cached": True, "latency_ms": 0})
 
     try:
         response = await discover_claims(
-            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version,
+            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version, rigor,
             cache=request.app.state.search_cache,
         )
     except AnalysisError as exc:
@@ -115,11 +127,17 @@ async def analyze_claim(
     request: Request,
     provider: str | None = Query(default=None, description="nebius | gemini | fake; defaults to ANALYZER_PROVIDER"),
     prompt_version: str = Query(default="v1", pattern="^v[01]$"),
+    rigor: str | None = Query(default=None, pattern="^(standard|strict)$",
+                             description="standard = as measured in docs/EVAL.md; strict = look harder at framing"),
     nocache: bool = Query(default=False),
 ) -> ClaimAnalysisResponse:
     """Stage 2: check the one claim the reader picked against web evidence."""
     analyzer = pick_analyzer(request, provider)
     cache = request.app.state.cache
+    rigor = rigor or request.app.state.settings.analyzer_rigor
+    # Only non-default rigor joins the cache key, so rows written before the knob
+    # existed stay reachable and a strict run can never serve a standard answer.
+    rigor_key = "" if rigor == "standard" else f":{rigor}"
 
     # The claim must come from the post. Without this a client could hand us arbitrary text
     # and have the model check it as though someone had posted it.
@@ -129,7 +147,7 @@ async def analyze_claim(
         raise HTTPException(status_code=422, detail="claim.quote is not present in post_text")
 
     key = make_key(
-        f"claim:{analyzer.name}:{analyzer.model}:{prompt_version}:{req.author_handle}:{req.claim.id}",
+        f"claim:{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}:{req.claim.id}",
         req.post_text + "\x00" + req.claim.text,
     )
     if not nocache and (hit := cache.get(key)) is not None:
@@ -137,7 +155,7 @@ async def analyze_claim(
 
     try:
         response = await check_one_claim(
-            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version,
+            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version, rigor,
             cache=request.app.state.search_cache,
         )
     except AnalysisError as exc:
