@@ -1,0 +1,34 @@
+{
+  "schema_version": "2",
+  "analysis": {
+    "post_summary": "A statistics office reports preliminary August inflation and energy price figures.",
+    "author": "Federal Statistical Office",
+    "author_background": "The Federal Statistical Office (Destatis) is a federal authority of Germany.",
+    "communication_signals": [],
+    "logical_fallacies": [],
+    "indicators": {
+      "strategic_intent": "Routine statistical release.",
+      "timing_note": "Scheduled monthly publication.",
+      "factual_context": "Figures are labelled preliminary by the source itself.",
+      "is_division_tactic": false
+    },
+    "manipulation_score": 5,
+    "cognitive_summary": "An informational post gives numbers, a source and a caveat, and asks nothing of the reader. That combination is the baseline to compare persuasive posts against."
+  },
+  "score_band": "low",
+  "sources": [
+    {
+      "title": "Federal Statistical Office of Germany",
+      "url": "https://en.wikipedia.org/wiki/Federal_Statistical_Office_of_Germany",
+      "snippet": "The Federal Statistical Office (Destatis) is a federal authority of Germany.",
+      "provider": "wikipedia"
+    }
+  ],
+  "transcript": null,
+  "cached": false,
+  "latency_ms": 1980,
+  "provider": "nebius",
+  "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+  "cost_usd": 0.0011,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. Not a fact-check. Verify claims against the listed sources."
+}

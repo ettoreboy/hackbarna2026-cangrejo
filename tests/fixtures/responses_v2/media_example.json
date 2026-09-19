@@ -1,0 +1,68 @@
+{
+  "schema_version": "2",
+  "analysis": {
+    "post_summary": "The author links a social problem to one group and demands an immediate binary choice.",
+    "author": "Alice Weidel",
+    "author_background": "Alice Elisabeth Weidel is a German politician who has served as co-leader of the Alternative for Germany (AfD) since 2022 and as co-leader of the AfD group in the Bundestag since 2017.",
+    "communication_signals": [
+      {
+        "name": "Outrage Farming",
+        "evidence": "pour over our borders",
+        "confidence": 0.85,
+        "description": "Emotionally charged imagery chosen to trigger sharing."
+      },
+      {
+        "name": "Scapegoating",
+        "evidence": "illegal migrants",
+        "confidence": 0.9,
+        "description": "Attributes a complex problem to one group as the sole cause."
+      },
+      {
+        "name": "Manufactured Urgency",
+        "evidence": "now",
+        "confidence": 0.7,
+        "description": "Frames an ongoing situation as a last-chance moment."
+      }
+    ],
+    "logical_fallacies": [
+      {
+        "name": "False Dilemma",
+        "evidence": "Either we"
+      },
+      {
+        "name": "Hasty Generalization",
+        "evidence": "Every day more illegal migrants pour over our borders while German families can'"
+      }
+    ],
+    "indicators": {
+      "strategic_intent": "Mobilize the base by naming a culprit and a deadline.",
+      "timing_note": "No timing signal identified.",
+      "factual_context": "The causal link asserted is not supported by any cited data.",
+      "is_division_tactic": true
+    },
+    "manipulation_score": 85,
+    "cognitive_summary": "Culprit plus deadline plus binary choice is the standard mobilisation triad. When you see all three, look for the missing second cause and the missing third option."
+  },
+  "score_band": "high",
+  "sources": [
+    {
+      "title": "Alice Weidel",
+      "url": "https://en.wikipedia.org/wiki/Alice_Weidel",
+      "snippet": "Alice Elisabeth Weidel is a German politician who has served as co-leader of the Alternative for Germany (AfD) since 2022 and as co-leader of the AfD group in the Bundestag since 2017.",
+      "provider": "wikipedia"
+    }
+  ],
+  "transcript": {
+    "text": "Every day more illegal migrants pour over our borders while German families can't pay their heating bills. The system is collapsing and the government looks away. Either we close the borders now or we lose our country. #AfD",
+    "language": "en",
+    "duration_s": 23.4,
+    "stt_provider": "slng/deepgram-nova-3",
+    "stt_latency_ms": 1650
+  },
+  "cached": false,
+  "latency_ms": 9800,
+  "provider": "nebius",
+  "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+  "cost_usd": 0.0013,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. Not a fact-check. Verify claims against the listed sources."
+}

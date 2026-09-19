@@ -1,0 +1,45 @@
+{
+  "schema_version": "2",
+  "analysis": {
+    "post_summary": "An anonymous account claims unnamed elites want the reader poor and scared.",
+    "author": "Totally Neutral Account",
+    "author_background": "Unknown author",
+    "communication_signals": [
+      {
+        "name": "Fear-mongering",
+        "evidence": "the elites want you poor and scared",
+        "confidence": 0.8,
+        "description": "Names a vague threat with no actor or evidence."
+      },
+      {
+        "name": "Emotional Bait",
+        "evidence": "wake up sheeple",
+        "confidence": 0.7,
+        "description": "Flatters the reader as awake versus a sleeping majority."
+      }
+    ],
+    "logical_fallacies": [
+      {
+        "name": "Appeal to Fear",
+        "evidence": "want you poor and scared"
+      }
+    ],
+    "indicators": {
+      "strategic_intent": "Engagement bait; no policy claim to evaluate.",
+      "timing_note": "No timing signal identified.",
+      "factual_context": "No verifiable claim is made.",
+      "is_division_tactic": true
+    },
+    "manipulation_score": 70,
+    "cognitive_summary": "A vague 'they', a fear, and flattery of the reader is a reusable engagement pattern. Ask who 'they' are and what evidence is offered; if neither is present, the post is bait."
+  },
+  "score_band": "high",
+  "sources": [],
+  "transcript": null,
+  "cached": false,
+  "latency_ms": 2050,
+  "provider": "nebius",
+  "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+  "cost_usd": 0.0011,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. Not a fact-check. Verify claims against the listed sources."
+}
