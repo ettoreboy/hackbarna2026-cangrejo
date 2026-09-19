@@ -1,5 +1,24 @@
 # ContextGuard Social — Critical analysis of the specification
 
+> **Written before any code existed**, against the original specification (a 0–100 manipulation
+> score with tactics and inferred intent). It is kept because the design that shipped is mostly
+> the answer to these ten points, but read it as history: the table below says what actually
+> happened to each one. Where the two disagree, the table wins.
+
+| # | Concern raised | What happened |
+| --- | --- | --- |
+| 1 | 1.5 s end-to-end is not achievable | Half-conceded. Median is 2.5 s on real tweets, p90 higher. Fast enough to feel live, not 1.5 s. |
+| 2 | Free-tier quota binds before latency does | Moved to paid Nebius credits, so this never bound. The real budget constraint was Brave search: 190 of 2 000 requests used, protected by a disk cache and a hard cap. |
+| 3 | A golden benchmark pre-judges the answer | Adopted. There is no gold-answer set. `backend/eval/metrics.py` measures properties that need no correct answer — quote fidelity, citation grounding, symmetry, restraint. |
+| 4 | Defamation exposure, especially in Germany | Adopted throughout. The verdict is about one claim, never the post and never the person; speaker context comes only from a cited source, otherwise the exact words "Unknown author". |
+| 5 | Post text is untrusted input | Adopted and measured. Injection resistance went from 0.20 to 1.00 between prompt v0 and v1. |
+| 6 | Web search is the wrong primary source | Partly adopted. Brave is still the evidence source, but the server drops any cited URL that was not in the retrieved evidence, so an invented source cannot reach the reader. |
+| 7 | A single 0–100 score invites over-trust | Adopted in full. Schema v3 removed the score. The output is a claim, a verdict on that claim, named techniques and the words that triggered them. |
+| 8 | The inoculation framing is overstated | Adopted. Dropped from the product and the pitch. |
+| 9 | X DOM selectors will break | Still true and unfixed. The extension scrapes the DOM; there is no X API in the design and none is wanted. |
+| 10 | Distribution needs hosting and auth | Out of scope, deliberately. The backend runs locally for the demo. |
+
+
 Written for: the project owner deciding what to build next. Each section states the problem, why it matters, and what v1 does about it.
 
 ## 1. The 1.5 s latency target is not achievable end-to-end
