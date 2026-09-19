@@ -165,7 +165,7 @@ class NebiusAnalyzer:
     ) -> StepOutcome[AnalysisBody]:
         system = SYSTEM_PROMPTS[prompt_version]
         user = build_user_prompt(req, claim, evidence, background)
-        return await self._structured(self.model, system, user, AnalysisBody, max_tokens=900)
+        return await self._structured(self.model, system, user, AnalysisBody, max_tokens=1400)
 
     # ------------------------------------------------------------------ two-stage
 
