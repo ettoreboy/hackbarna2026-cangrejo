@@ -7,3 +7,4 @@ __pycache__/
 *.zip
 .DS_Store
 .cache/
+artifacts/**/*.safetensors

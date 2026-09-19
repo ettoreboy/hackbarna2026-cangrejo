@@ -18,7 +18,7 @@
     "created_at": 1789824142,
     "error": null,
     "fine_tuned_model": null,
-    "finished_at": null,
+    "finished_at": 1789824749,
     "hyperparameters": {
       "batch_size": 16,
       "learning_rate_multiplier": null,
@@ -58,7 +58,7 @@
       "file-16853b5a7aa55bc89b5c7de37fdcef27"
     ],
     "seed": 0,
-    "status": "running",
+    "status": "succeeded",
     "trained_tokens": 907806,
     "training_file": "file-01a0b9d5-0c71-70ef-a24d-d1eeb3ad8504",
     "validation_file": "file-01a0b9d5-0d28-7f67-a941-5e7547447ef9",
@@ -149,6 +149,83 @@
       "type": null,
       "source": "training",
       "job_uuid": "ftjob-eecfd53ac90b4195955ccb723a987f8d"
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "ftckpt_7b862b26-9225-4384-aaab-d3152ebbbff2",
+      "created_at": 1789824623,
+      "fine_tuned_model_checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-09-19:org_placeholder:contextguard-v3-2:IDPlaceholder:ckpt-step-3",
+      "fine_tuning_job_id": "ftjob-eecfd53ac90b4195955ccb723a987f8d",
+      "metrics": {
+        "full_valid_loss": null,
+        "full_valid_mean_token_accuracy": null,
+        "step": null,
+        "train_loss": 0.6175860166549683,
+        "train_mean_token_accuracy": null,
+        "valid_loss": 0.25262966752052307,
+        "valid_mean_token_accuracy": null
+      },
+      "object": "fine_tuning.job.checkpoint",
+      "step_number": 3,
+      "result_files": [
+        "file-92f187edbdbc54a4b3b8fda1db70e4e8",
+        "file-6539c5848eb856b29389a680a2fd06e4",
+        "file-58e4109962e9574db3707c01deb3c0a6",
+        "file-d695019b808453ecba285fe6b5dd5906",
+        "file-348294b25bb451ce9d20405ea705a4ba",
+        "file-97b11a01d61451d6935ed7a78455b761"
+      ]
+    },
+    {
+      "id": "ftckpt_eb77ed93-0b53-43d7-bb15-e8f6f635ea87",
+      "created_at": 1789824638,
+      "fine_tuned_model_checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-09-19:org_placeholder:contextguard-v3-2:IDPlaceholder:ckpt-step-6",
+      "fine_tuning_job_id": "ftjob-eecfd53ac90b4195955ccb723a987f8d",
+      "metrics": {
+        "full_valid_loss": null,
+        "full_valid_mean_token_accuracy": null,
+        "step": null,
+        "train_loss": 0.5304147005081177,
+        "train_mean_token_accuracy": null,
+        "valid_loss": 0.21458715200424194,
+        "valid_mean_token_accuracy": null
+      },
+      "object": "fine_tuning.job.checkpoint",
+      "step_number": 6,
+      "result_files": [
+        "file-3dca545a12b75e8384d40b4eaf8cc515",
+        "file-9c0e5c05ed75571aa09de266421274ee",
+        "file-d4a9e83240b75fec9fb0af311c7b8124",
+        "file-4b583c97b7f153ab9aa3ee1a17886f67",
+        "file-e5774301709a568a945ae3af11ecd90d",
+        "file-6c3b18c5245b57c39fecc5231d9174e5"
+      ]
+    },
+    {
+      "id": "ftckpt_c5ebfd36-1907-48e0-9252-41809cab14c6",
+      "created_at": 1789824655,
+      "fine_tuned_model_checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-09-19:org_placeholder:contextguard-v3-2:IDPlaceholder:ckpt-step-9",
+      "fine_tuning_job_id": "ftjob-eecfd53ac90b4195955ccb723a987f8d",
+      "metrics": {
+        "full_valid_loss": null,
+        "full_valid_mean_token_accuracy": null,
+        "step": null,
+        "train_loss": 0.45801886916160583,
+        "train_mean_token_accuracy": null,
+        "valid_loss": 0.2086770385503769,
+        "valid_mean_token_accuracy": null
+      },
+      "object": "fine_tuning.job.checkpoint",
+      "step_number": 9,
+      "result_files": [
+        "file-76394106ea925c7b8626a55a9721c509",
+        "file-1c88debb46455b37919420ec12bf7fe6",
+        "file-071df36ba5be5599a0550ccf5d78d1b8",
+        "file-e69237da2554586cb3d662b5a8433197",
+        "file-ee79ca26eae856d4940f4107f52c938c",
+        "file-16853b5a7aa55bc89b5c7de37fdcef27"
+      ]
     }
   ]
 }

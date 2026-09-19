@@ -7,10 +7,20 @@
     .venv/bin/python -m backend.eval.serve_finetune --delete <endpoint_id>
 
 A LoRA fine-tune is NOT callable on the shared inference API: the job's `fine_tuned_model` is
-null and the checkpoint ids carry literal `org_placeholder` text. The adapter is served by
-creating a dedicated endpoint on the base model with `custom_weights_id` set to the checkpoint.
+null and the checkpoint ids carry literal `org_placeholder` text. Every attempt to use one as a
+model name returns 404.
 
-THIS STARTS A GPU AND BILLS BY THE HOUR. Delete the endpoint when the demo is done.
+BLOCKED, as of 19 Sep 2026. A dedicated endpoint takes `custom_weights_id`, which must start
+with `model-artifact_`. Model artifacts are created at POST /v0/model_artifacts, which accepts
+`kind: "full"` only (not `lora`) and exactly one source, `{"huggingface": {"repo_id": ...}}`.
+There is no way to point either resource at a Token Factory fine-tuning checkpoint. Serving our
+adapter would mean merging it into the 30B base, pushing ~60 GB to Hugging Face and registering
+that repo — not a hackathon-scale task. GET /v0/model_artifacts also returns 403 on this
+account, so the beta may not be enabled either.
+
+This script is kept because the shape is right and one mentor answer may unblock it.
+
+CREATING AN ENDPOINT STARTS A GPU AND BILLS BY THE HOUR. Delete it when the demo is done.
 """
 
 from __future__ import annotations

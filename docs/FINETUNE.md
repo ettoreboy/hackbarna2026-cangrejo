@@ -111,6 +111,48 @@ quote in the same example, because the dedupe validator compares label names and
 Treat this job as v1, a proof that the whole path works. The dataset needs the taxonomy fix
 before a student trained on it should be served.
 
+## v2: the same posts, a fixed taxonomy
+
+Reviewing v1 found two defects (below). Both fixes were applied and the 298 posts were
+relabelled. v2 is `tests/eval/v2/`, v1 is kept at `tests/eval/v1/`.
+
+| | v1 | v2 |
+| --- | --- | --- |
+| Examples kept | 194 | 188 |
+| Examples with a duplicated or nested quote | 33 (17%) | **0** |
+| Most common label's share | Loaded Language 43% | Loaded Language 38% |
+| Labels never used | 9 of 27 | 12 of 25 |
+| Best validation loss | 0.244 | **0.209** |
+
+**The quote fix worked.** Dedupe now drops a span that contains or sits inside one already
+kept, so the extension can never underline the same phrase twice.
+
+**The label-breadth fix did not work.** Giving each label a one-line definition in the prompt
+moved the top label five points and left more labels unused, not fewer. The diagnosis was
+wrong: the model can tell the labels apart, but the generated posts genuinely are mostly loaded
+language, scapegoating and fear appeals. Breadth needs posts written to exhibit Straw Man,
+Whataboutism and Motte and Bailey distinctly — a generator change, not a prompt change. Left
+undone and recorded here.
+
+## Serving is blocked, and it is not the beta flag I assumed
+
+Job `ftjob-a8d32...` (v2) trained to validation loss 0.209 and the adapter is in
+`artifacts/contextguard-v3-2-lora/`. It still cannot be called. The chain:
+
+1. The job's `fine_tuned_model` is `null` and checkpoint ids contain literal `org_placeholder`
+   and `IDPlaceholder` text. Using one as a model name returns 404.
+2. `POST /v0/dedicated_endpoints` takes `custom_weights_id`, which must start with
+   `model-artifact_`.
+3. `POST /v0/model_artifacts` accepts `kind: "full"` only — not `lora` — and exactly one
+   source, `{"huggingface": {"repo_id": ...}}`. `GET` on the same path returns 403 here.
+
+So there is no API path from a Token Factory fine-tuning checkpoint to a served endpoint.
+Serving this adapter would mean merging it into the 30B base, pushing roughly 60 GB to Hugging
+Face and registering that repo. That is not a weekend task.
+
+**This is a question for the Nebius mentors, not a code problem.** `backend/eval/serve_finetune.py`
+is written and correct apart from the artifact id; one answer unblocks it.
+
 ## Two open risks, stated plainly
 
 1. **Serving the result is beta-on-request on Nebius.** A trained adapter that cannot be served
