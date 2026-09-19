@@ -39,12 +39,18 @@ async def wikipedia_summary(client: httpx.AsyncClient, name: str, lang: str = "e
     url = WIKIPEDIA_SUMMARY_URL.format(lang=lang, title=title)
     try:
         resp = await client.get(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"}, timeout=5.0)
+        if resp.status_code != 200:
+            return None
+        # A captive portal answers 200 with an HTML login page. json() then raises ValueError,
+        # which is neither an httpx.HTTPError nor an AnalysisError, so it used to escape the
+        # router as a raw 500 traceback. Conference wifi is exactly where this happens.
+        data = resp.json()
     except httpx.HTTPError as exc:
         log.warning("wikipedia request failed: %s", exc)
         return None
-    if resp.status_code != 200:
+    except ValueError:
+        log.warning("wikipedia returned a non-JSON body (captive portal?)")
         return None
-    data = resp.json()
     if data.get("type") == "disambiguation":
         return None
     extract = (data.get("extract") or "").strip()
@@ -82,19 +88,27 @@ async def brave_search(
     except httpx.HTTPError as exc:
         log.warning("brave request failed: %s", exc)
         return []
-    if cache is not None:
-        cache.record_live_call(query)
     if resp.status_code != 200:
+        # Counted only on a served request. Counting before the status check meant a 429 or a
+        # 5xx still spent budget we had paid for and never received results for.
         log.warning("brave returned %s", resp.status_code)
         return []
-    results = (resp.json().get("web") or {}).get("results") or []
+    if cache is not None:
+        cache.record_live_call(query)
+    try:
+        results = (resp.json().get("web") or {}).get("results") or []
+    except ValueError:
+        log.warning("brave returned a non-JSON body (captive portal?)")
+        return []
     out: list[Source] = []
     for r in results[:count]:
         url = r.get("url")
         if not url:
             continue
         out.append(Source(title=r.get("title") or url, url=url, snippet=(r.get("description") or "")[:600], provider="brave"))
-    if cache is not None:
+    # An empty result is never cached. The cache has no expiry during the event, so caching a
+    # miss would pin that query to "no evidence" for the rest of the hackathon.
+    if cache is not None and out:
         cache.put(query, [s.model_dump() for s in out])
     return out
 

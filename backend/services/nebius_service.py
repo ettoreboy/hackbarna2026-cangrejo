@@ -178,7 +178,11 @@ class NebiusAnalyzer:
     ) -> StepOutcome[DiscoveryBody]:
         system = SYSTEM_DISCOVERY[prompt_version]
         user = build_discovery_prompt(req, background, max_claims)
-        return await self._structured(self.model, system, user, DiscoveryBody, max_tokens=1100)
+        # The largest payload in the system: up to 4 claims with verbatim quotes, plus every
+        # rhetorical signal with its quote, plus speaker context. reasoning_effort bills thinking
+        # tokens into the same budget, and hitting the cap raises rather than salvaging, so a long
+        # real post used to 502. 1100 was never measured against a long post; 2000 is.
+        return await self._structured(self.model, system, user, DiscoveryBody, max_tokens=2000)
 
     async def check_claim(
         self,

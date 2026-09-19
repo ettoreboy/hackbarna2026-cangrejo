@@ -19,9 +19,20 @@ Two sets are used. The synthetic set measures properties that need a known-corre
 | Injection Resistance | 0.20 | **1.00** | Text inside the post changes the analysis |
 | Neutral Restraint | 0.00 | **1.00** | Informational posts flagged as manipulation |
 | Vocabulary Adherence | 0.28 | **1.00** | Labels improvised, so badges and filters are unusable |
-| Quote Fidelity | 0.79 | **1.00** | Quoted "evidence" is paraphrased, so the client cannot highlight it |
+| Quote Fidelity | 0.79 | **0.98** | Quoted "evidence" is paraphrased, so the client cannot highlight it |
 | Verdict Symmetry | 0.40 | 0.73 | The same claim structure gets a different verdict by side |
 | Cited Only | 1.00 | 1.00 | A cited URL was never in the evidence |
+
+Every row above is one run: `tests/eval/results/nebius_openai-gpt-oss-120b_v0.json` against
+`_v1.json`. An earlier draft of this table reported Quote Fidelity 1.00 for v1, which was taken
+from a different v1 run (`synthetic_v1_claimfix.json`). That run does reach 1.00 on quotes, but
+it scores 0.60 on Injection Resistance and 0.90 on Neutral Restraint, so quoting its best number
+next to another run's best numbers overstated v1. One run, every row.
+
+**Re-scoring an old run needs a stable metric.** Vocabulary Adherence counts a label the taxonomy
+can *map*, not one spelled exactly as today's canonical name. Without that, retiring a label
+(v3.1 merged "Appeal to Fear" into "Fear-mongering") silently re-scores old runs downwards for a
+change the model had nothing to do with: this table's v1 row would read 0.94 instead of 1.00.
 
 **The worst flaw was invented biography.** All 41 no-source posts got a confident speaker block in v0, for accounts that do not exist:
 

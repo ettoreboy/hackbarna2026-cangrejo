@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     search_result_count: int = Field(default=3, alias="SEARCH_RESULT_COUNT")
     wikipedia_lang: str = Field(default="en", alias="WIKIPEDIA_LANG")
 
+    # Galtea evaluation platform. Only backend/eval/galtea_sync.py reads these; the server
+    # never calls Galtea, so a missing key costs nothing at runtime.
+    galtea_api_key: str = Field(default="", alias="GALTEA_API_KEY")
+    galtea_product: str = Field(default="ContextGuard Social", alias="GALTEA_PRODUCT")
+
     # Speech-to-text for video posts
     slng_api_key: str = Field(default="", alias="SLNG_API_KEY")
     slng_region: str = Field(default="eu-west", alias="SLNG_REGION")
@@ -67,6 +72,10 @@ class Settings(BaseSettings):
     @property
     def brave_configured(self) -> bool:
         return bool(self.brave_api_key)
+
+    @property
+    def galtea_configured(self) -> bool:
+        return bool(self.galtea_api_key)
 
     @property
     def slng_configured(self) -> bool:

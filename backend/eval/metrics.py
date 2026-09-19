@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.prompts.taxonomy import is_canonical
+from backend.prompts.taxonomy import is_canonical, normalize_label
 
 
 @dataclass
@@ -166,13 +166,25 @@ def quote_fidelity(records: dict[str, dict], items: dict[str, dict]) -> MetricRe
                         "share of quotes that appear verbatim in the post", failures[:15])
 
 
+def _adherent(name: str) -> bool:
+    """A label counts as adherent when the taxonomy can map it, not only when it is spelled
+    exactly as the current canonical name.
+
+    Records store the label as it was normalised at the time of the run. Retiring a label later
+    (v3.1 merged "Appeal to Fear" into "Fear-mongering") would otherwise re-score an old run
+    downwards for a change the model had nothing to do with: the v1 run moved from 1.00 to 0.94
+    the moment the taxonomy shrank. Re-normalising makes a re-score reproducible.
+    """
+    return is_canonical(normalize_label(name))
+
+
 def vocabulary_adherence(records: dict[str, dict], items: dict[str, dict]) -> MetricResult:
     """Are signal names from the canonical list rather than invented?"""
     ok, total, failures = 0, 0, []
     for item_id, rec in sorted(records.items()):
         for name in sorted(_names(rec)):
             total += 1
-            if is_canonical(name):
+            if _adherent(name):
                 ok += 1
             else:
                 failures.append(f"{item_id}: {name}")
