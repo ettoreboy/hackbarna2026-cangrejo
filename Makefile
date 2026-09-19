@@ -114,8 +114,17 @@ compare: ## Side-by-side arms on one post (VARIANTS=provider:prompt,...)
 ## ---------------------------------------------------------------- end to end
 
 .PHONY: e2e
-e2e: ## Boot the API in fake mode, health + analyze + extension manifest check, tear down
+e2e: ## Boot the API in fake mode, run both paths end to end, tear down
+	@# Two paths, because they are different code: /analyze is the one-shot pipeline, and
+	@# /claims + /analyze-claim is what the extension actually calls on a click.
 	@# BRAVE_API_KEY is blanked on purpose: this target must not spend paid search queries.
+	@# Refuse to run against a server we did not start. Without this the uvicorn below fails
+	@# to bind, the failure scrolls past, and the curls silently hit whatever is on the port --
+	@# which on a dev machine is a live-key server, so the "offline, no spend" promise is void.
+	@if curl -sf $(BASE)/api/v1/health >/dev/null 2>&1; then \
+	  echo "e2e: something is already serving $(BASE). Stop it, or re-run with PORT=8010."; \
+	  exit 1; \
+	fi
 	@set -euo pipefail; \
 	ANALYZER_PROVIDER=fake BRAVE_API_KEY= $(UVICORN) backend.main:app --host $(HOST) --port $(PORT) --log-level warning & \
 	pid=$$!; trap "kill $$pid 2>/dev/null || true" EXIT; \
@@ -124,6 +133,7 @@ e2e: ## Boot the API in fake mode, health + analyze + extension manifest check, 
 	curl -sf -X POST $(BASE)/api/v1/analyze -H 'content-type: application/json' \
 	  -d "$$($(PY) -c 'import json;print(json.dumps(json.load(open("tests/fixtures/posts.json"))["$(POST)"]["request"]))')" \
 	  | $(SUMMARIZE); \
+	$(PY) scripts/e2e_twostage.py --base $(BASE) --post $(POST); \
 	$(PY) -c 'import json;m=json.load(open("extension/manifest.json"));print("manifest", m["name"], "v"+m["version"])'; \
 	echo "e2e OK"
 
