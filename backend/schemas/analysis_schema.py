@@ -107,6 +107,30 @@ class SpeakerContext(BaseModel):
     background: str
 
 
+def dedupe_signal_list(signals: list[Signal]) -> list[Signal]:
+    """One label once, and one span of the post tagged once.
+
+    Deduping on the label alone left 17% of analyses with the same words highlighted twice,
+    including six where two labels carried a byte-identical quote. The client highlights these
+    spans, so an overlap renders as a double underline on the same phrase. The longer quote
+    wins, since it is the one that carries the context.
+
+    Shared by AnalysisBody (/analyze) and DiscoveryBody (/claims): both feed the same renderer.
+    """
+    kept: list[Signal] = []
+    seen_names: set[str] = set()
+    for sig in sorted(signals, key=lambda s: len(s.evidence), reverse=True):
+        if sig.name in seen_names:
+            continue
+        span = sig.evidence.strip()
+        if span and any(span in k.evidence or k.evidence in span for k in kept):
+            continue
+        seen_names.add(sig.name)
+        kept.append(sig)
+    order = {id(s): i for i, s in enumerate(signals)}
+    return sorted(kept, key=lambda s: order[id(s)])
+
+
 class AnalysisBody(BaseModel):
     claim_check: ClaimCheck
     missing_context: str
@@ -115,25 +139,7 @@ class AnalysisBody(BaseModel):
 
     @model_validator(mode="after")
     def dedupe_signals(self) -> "AnalysisBody":
-        """One label once, and one span of the post tagged once.
-
-        Deduping on the label alone left 17% of analyses with the same words highlighted twice,
-        including six where two labels carried a byte-identical quote. The client highlights
-        these spans, so an overlap renders as a double underline on the same phrase. The longer
-        quote wins, since it is the one that carries the context.
-        """
-        kept: list[Signal] = []
-        seen_names: set[str] = set()
-        for sig in sorted(self.rhetorical_signals, key=lambda s: len(s.evidence), reverse=True):
-            if sig.name in seen_names:
-                continue
-            span = sig.evidence.strip()
-            if span and any(span in k.evidence or k.evidence in span for k in kept):
-                continue
-            seen_names.add(sig.name)
-            kept.append(sig)
-        order = {id(s): i for i, s in enumerate(self.rhetorical_signals)}
-        self.rhetorical_signals = sorted(kept, key=lambda s: order[id(s)])
+        self.rhetorical_signals = dedupe_signal_list(self.rhetorical_signals)
         return self
 
 
@@ -184,10 +190,17 @@ class DiscoveryBody(BaseModel):
 
     @model_validator(mode="after")
     def dedupe(self) -> "DiscoveryBody":
-        seen: set[str] = set()
-        self.rhetorical_signals = [s for s in self.rhetorical_signals if not (s.name in seen or seen.add(s.name))]
-        seen_q: set[str] = set()
-        self.claims = [c for c in self.claims if c.quote.strip() and not (c.quote in seen_q or seen_q.add(c.quote))]
+        self.rhetorical_signals = dedupe_signal_list(self.rhetorical_signals)
+        # Same reasoning for claims: two entries whose quotes overlap are one claim said twice,
+        # and the reader would be picking between duplicates. The longer span wins.
+        kept: list[ClaimDraft] = []
+        for claim in sorted(self.claims, key=lambda c: len(c.quote), reverse=True):
+            span = claim.quote.strip()
+            if not span or any(span in k.quote or k.quote in span for k in kept):
+                continue
+            kept.append(claim)
+        order = {id(c): i for i, c in enumerate(self.claims)}
+        self.claims = sorted(kept, key=lambda c: order[id(c)])
         return self
 
 

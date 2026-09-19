@@ -92,6 +92,26 @@ async def test_claim_whose_quote_is_absent_is_dropped(client, fake_analyzer, mon
     assert claims[0]["id"] == "c1", "ids must stay sequential after a drop"
 
 
+def test_overlapping_claims_are_merged():
+    """Two entries whose quotes overlap are one claim said twice; the longer span wins."""
+    from backend.schemas.analysis_schema import ClaimDraft, DiscoveryBody, Signal, SpeakerContext
+
+    body = DiscoveryBody(
+        claims=[
+            ClaimDraft(text="Short version.", quote="accepted 1.2M migrants"),
+            ClaimDraft(text="Full version.", quote="Germany accepted 1.2M migrants last year"),
+            ClaimDraft(text="Separate.", quote="the asylum budget keeps climbing"),
+        ],
+        rhetorical_signals=[
+            Signal(name="Loaded Language", evidence="clearly doesn't care"),
+            Signal(name="Scapegoating", evidence="doesn't care"),  # overlaps, must go
+        ],
+        speaker_context=SpeakerContext(name="x", role="", background="Unknown author"),
+    )
+    assert [c.text for c in body.claims] == ["Full version.", "Separate."]
+    assert [s.name for s in body.rhetorical_signals] == ["Loaded Language"]
+
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_pure_rhetoric_yields_no_claims_but_keeps_signals(client):
