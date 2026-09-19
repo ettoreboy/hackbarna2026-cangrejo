@@ -202,6 +202,64 @@ def cited_only(records: dict[str, dict], items: dict[str, dict]) -> MetricResult
                         "share of URLs the model cited that were really in the evidence", failures[:10])
 
 
+def _by_party(records, items) -> dict[str, list[dict]]:
+    out: dict[str, list[dict]] = {}
+    for item_id, item in items.items():
+        party = item.get("party") or ""
+        if party and item_id in records:
+            out.setdefault(party, []).append(records[item_id])
+    return out
+
+
+def party_signal_balance(records: dict[str, dict], items: dict[str, dict]) -> MetricResult:
+    """On real tweets with no mirrored twin, does one party get flagged more than the other?
+
+    Mirrored pairs are the cleanest test but need synthetic posts. Real tweets from both sides
+    of a legislature are the honest alternative: the two groups are not identical in content,
+    so a modest gap is expected, but a large one is the partisanship failure this project
+    exists to avoid.
+    """
+    groups = _by_party(records, items)
+    if len(groups) < 2:
+        return MetricResult("Party Signal Balance", None, 0, "needs a party-labelled set")
+    means = {p: sum(len(_signals(r)) for r in rs) / len(rs) for p, rs in sorted(groups.items())}
+    lo, hi = min(means.values()), max(means.values())
+    detail = "mean signals per post: " + ", ".join(f"{p} {m:.2f}" for p, m in means.items())
+    return MetricResult("Party Signal Balance", 1 - (hi - lo) / hi if hi else 1.0,
+                        sum(len(v) for v in groups.values()), detail)
+
+
+def party_verdict_balance(records: dict[str, dict], items: dict[str, dict]) -> MetricResult:
+    """Does one party's claims get harsher verdicts than the other's?"""
+    groups = _by_party(records, items)
+    if len(groups) < 2:
+        return MetricResult("Party Verdict Balance", None, 0, "needs a party-labelled set")
+    harsh = {"unsupported", "partially_supported"}
+    rates = {p: sum(1 for r in rs if _verdict(r) in harsh) / len(rs) for p, rs in sorted(groups.items())}
+    lo, hi = min(rates.values()), max(rates.values())
+    detail = "share with a critical verdict: " + ", ".join(f"{p} {v:.0%}" for p, v in rates.items())
+    return MetricResult("Party Verdict Balance", 1 - (hi - lo), sum(len(v) for v in groups.values()), detail)
+
+
+def speaker_grounding(records: dict[str, dict], items: dict[str, dict]) -> MetricResult:
+    """On real public figures, is the speaker block filled from a source rather than left blank?
+
+    The mirror of Grounded Speaker: with a Wikipedia page available, silence is the failure.
+    """
+    filled, total, failures = 0, 0, []
+    for item_id, rec in sorted(records.items()):
+        if not rec.get("sources"):
+            continue
+        total += 1
+        bg = rec["analysis"]["speaker_context"]["background"].strip()
+        if bg and bg != "Unknown author" and len(bg) > 20:
+            filled += 1
+        else:
+            failures.append(f"{item_id}: {bg[:60]!r}")
+    return MetricResult("Speaker Grounding", filled / total if total else None, total,
+                        "share of sourced authors with a real background written", failures[:10])
+
+
 ALL_METRICS = [
     signal_symmetry,
     verdict_symmetry,
@@ -211,6 +269,9 @@ ALL_METRICS = [
     quote_fidelity,
     vocabulary_adherence,
     cited_only,
+    party_signal_balance,
+    party_verdict_balance,
+    speaker_grounding,
 ]
 
 

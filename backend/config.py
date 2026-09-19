@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     nebius_reasoning_effort: str = Field(default="low", alias="NEBIUS_REASONING_EFFORT", description="low|medium|high|'' to omit")
     nebius_base_url: str = Field(default="https://api.tokenfactory.nebius.com/v1/", alias="NEBIUS_BASE_URL")
     nebius_timeout_seconds: float = Field(default=30.0, alias="NEBIUS_TIMEOUT_SECONDS")
+    # Verdicts proved unstable run to run at 0.2 (only 72% of 50 tweets agreed across two
+    # identical runs). 0 is the default so the same post gives the same answer.
+    nebius_temperature: float = Field(default=0.0, alias="NEBIUS_TEMPERATURE")
 
     # Gemini (baseline)
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")

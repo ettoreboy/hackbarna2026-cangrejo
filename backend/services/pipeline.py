@@ -27,6 +27,7 @@ from backend.services.analyzer_base import Analyzer
 from backend.services.background_service import get_author_background
 from backend.services.evidence_service import search_claim
 from backend.services.search_cache import SearchCache
+from backend.services.text_tools import snap_quote
 
 
 def _ms(started: float) -> int:
@@ -45,6 +46,20 @@ def _cited_only(check: ClaimCheck, evidence: list[Source]) -> ClaimCheck:
         seen.add(key)
         kept.append(ClaimSource(title=src.title, url=src.url))
     return check.model_copy(update={"sources": kept})
+
+
+def _snap_quotes(body, post: str):
+    """Replace each quote with the exact span of the post it refers to; drop ones that are not there.
+
+    Models normalise typography when copying (a non-breaking hyphen becomes "-"), which would
+    leave the extension unable to highlight the span it was handed.
+    """
+    kept = []
+    for sig in body.rhetorical_signals:
+        exact = snap_quote(post, sig.evidence)
+        if exact is not None:
+            kept.append(sig.model_copy(update={"evidence": exact}))
+    return body.model_copy(update={"rhetorical_signals": kept})
 
 
 async def run_pipeline(
@@ -78,6 +93,11 @@ async def run_pipeline(
     body_outcome = await analyzer.analyse(req, claim, evidence, background, prompt_version=prompt_version)
     timings.analyse_ms = _ms(t0)
     body = body_outcome.result
+
+    body = _snap_quotes(body, req.post_text)
+    if claim.found and claim.quote:
+        exact_claim = snap_quote(req.post_text, claim.quote)
+        claim = claim.model_copy(update={"quote": exact_claim or ""})
 
     check = _cited_only(body.claim_check, evidence)
     if not claim.found and check.verdict != "no_factual_claim":

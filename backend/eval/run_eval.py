@@ -139,7 +139,10 @@ async def main() -> int:
         records = await asyncio.gather(*(run_one(i, analyzer, http, settings, cache, args.prompt_version, sem) for i in items))
 
     spent = cache.live_calls() - before
-    out = Path(args.out or ROOT / f"tests/eval/results/{args.provider}_{args.model_label.replace('/', '-')}_{args.prompt_version}.json")
+    set_tag = Path(args.set).stem
+    out = Path(args.out) if args.out else ROOT / f"tests/eval/results/{set_tag}_{args.provider}_{args.model_label.replace('/', '-')}_{args.prompt_version}.json"
+    if not out.is_absolute():
+        out = ROOT / out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({
         "provider": args.provider, "model": args.model_label, "prompt_version": args.prompt_version,
@@ -149,7 +152,7 @@ async def main() -> int:
     results = score_run(list(records), items_raw)
     report(results, list(records), args)
     print(f"\n  brave live calls this run: {spent} (total spent {cache.live_calls()})")
-    print(f"  written to {out.relative_to(ROOT)}")
+    print(f"  written to {out}")
     cache.close()
     return 0
 

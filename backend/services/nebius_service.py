@@ -53,6 +53,7 @@ class NebiusAnalyzer:
         self.model = settings.nebius_model
         self.fast_model = settings.nebius_fast_model or settings.nebius_model
         self.reasoning_effort = settings.nebius_reasoning_effort or None
+        self.temperature = settings.nebius_temperature
         self.client = client or AsyncOpenAI(
             base_url=settings.nebius_base_url,
             api_key=settings.nebius_api_key,
@@ -72,7 +73,7 @@ class NebiusAnalyzer:
             model=model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             response_format=strict_format or RESPONSE_FORMAT_JSON_OBJECT,
-            temperature=0.2,
+            temperature=self.temperature,
             max_tokens=max_tokens,
         )
         if self.reasoning_effort:

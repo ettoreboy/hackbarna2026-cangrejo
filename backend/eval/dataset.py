@@ -8,7 +8,7 @@ from typing import Iterator, Literal
 
 from pydantic import BaseModel, Field
 
-Group = Literal["right", "left", "neutral", "injection_clean", "injection_dirty"]
+Group = Literal["right", "left", "neutral", "injection_clean", "injection_dirty", "real"]
 
 
 class EvalItem(BaseModel):
@@ -22,6 +22,8 @@ class EvalItem(BaseModel):
     post_text: str
     claim_expected: bool = Field(description="Whether the post contains a checkable factual claim")
     signals_expected: bool = Field(description="Whether any rhetorical signal should be found")
+    party: str = Field(default="", description="Real-tweet sets only: the author's party at collection")
+    post_url: str = ""
 
     def to_request(self) -> dict:
         return {
@@ -49,4 +51,41 @@ def read_jsonl(path: str | Path) -> Iterator[dict]:
 
 
 def load_eval_set(path: str | Path) -> list[EvalItem]:
-    return [EvalItem.model_validate(row) for row in read_jsonl(path)]
+    """Load a generated .jsonl set or a real-tweet .csv (tweets.csv schema)."""
+    p = Path(path)
+    if p.suffix == ".csv":
+        return load_tweet_csv(p)
+    return [EvalItem.model_validate(row) for row in read_jsonl(p)]
+
+
+def load_tweet_csv(path: str | Path) -> list[EvalItem]:
+    """Real tweets from the research archive: one row per tweet, party label as ground truth.
+
+    Nothing here is annotated for claims or signals, so claim_expected/signals_expected are
+    left true and the metrics that need a label are skipped. What this set measures is whether
+    the analyzer treats the two parties the same, on real language.
+    """
+    import csv
+
+    items: list[EvalItem] = []
+    with Path(path).open() as fh:
+        for row in csv.DictReader(fh):
+            text = (row.get("text") or "").strip()
+            handle = (row.get("author_handle") or "").strip().lstrip("@")
+            if not text or not handle:
+                continue
+            items.append(EvalItem(
+                id=row.get("tweet_id") or handle,
+                group="real",
+                pair_id=None,
+                topic=row.get("split", ""),
+                signal_target="",
+                author_handle=handle,
+                author_name=(row.get("author_name") or handle).strip(),
+                post_text=text,
+                claim_expected=True,
+                signals_expected=True,
+                party=(row.get("party_at_collection") or "").strip(),
+                post_url=(row.get("post_url") or "").strip(),
+            ))
+    return items
