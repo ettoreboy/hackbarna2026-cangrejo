@@ -271,7 +271,10 @@ extension-check: ## Verify the extension and the backend still agree (ports, ver
 
 .PHONY: extension-reload
 extension-reload: ## What to press after editing extension/ (no restart of the backend needed)
-	@echo "  chrome://extensions → ⟳ on the Unfold card, then reload the x.com tab"
+	@echo "  Chrome   chrome://extensions → ⟳ on the Unfold card, then reload the x.com tab"
+	@echo "  Firefox  about:debugging#/runtime/this-firefox → Reload, then reload the x.com tab"
+	@echo
+	@echo "  Neither browser picks up an edit on its own; both keep serving the code they loaded."
 	@open -a "Google Chrome" "chrome://extensions" 2>/dev/null || true
 
 .PHONY: extension-zip
