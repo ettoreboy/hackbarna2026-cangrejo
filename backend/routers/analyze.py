@@ -15,12 +15,17 @@ from backend.schemas.analysis_schema import (
     HealthResponse,
 )
 from backend.services.analyzer_base import AnalysisError, Analyzer
-from backend.services.cache import make_key
+from backend.services.cache import context_key, make_key
 from backend.services.pipeline import check_one_claim, discover_claims, run_pipeline
 from backend.services.text_tools import snap_quote
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
+
+
+def _ctx_key(req: AnalyzeRequest) -> str:
+    """The quoted post and the links change the answer, so they have to change the key."""
+    return context_key(req.links, req.quoted_post.text if req.quoted_post else "")
 
 
 def pick_analyzer(request: Request, provider: str | None) -> Analyzer:
@@ -63,7 +68,7 @@ async def analyze(
     # existed stay reachable and a strict run can never serve a standard answer.
     rigor_key = "" if rigor == "standard" else f":{rigor}"
 
-    key = make_key(f"{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}", req.post_text)
+    key = make_key(f"{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}{_ctx_key(req)}", req.post_text)
     if not nocache and (hit := cache.get(key)) is not None:
         return hit.model_copy(update={"cached": True, "latency_ms": 0})
 
@@ -104,7 +109,7 @@ async def claims(
     # existed stay reachable and a strict run can never serve a standard answer.
     rigor_key = "" if rigor == "standard" else f":{rigor}"
 
-    key = make_key(f"claims:{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}", req.post_text)
+    key = make_key(f"claims:{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}{_ctx_key(req)}", req.post_text)
     if not nocache and (hit := cache.get(key)) is not None:
         return hit.model_copy(update={"cached": True, "latency_ms": 0})
 
@@ -147,7 +152,7 @@ async def analyze_claim(
         raise HTTPException(status_code=422, detail="claim.quote is not present in post_text")
 
     key = make_key(
-        f"claim:{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}:{req.claim.id}",
+        f"claim:{analyzer.name}:{analyzer.model}:{prompt_version}{rigor_key}:{req.author_handle}{_ctx_key(req)}:{req.claim.id}",
         req.post_text + "\x00" + req.claim.text,
     )
     if not nocache and (hit := cache.get(key)) is not None:

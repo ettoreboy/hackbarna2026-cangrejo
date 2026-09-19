@@ -24,6 +24,7 @@
       "provider": "brave"
     }
   ],
+  "linked_pages": [],
   "steps": {
     "extract_ms": 0,
     "evidence_ms": 520,

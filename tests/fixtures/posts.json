@@ -9,7 +9,13 @@
     },
     "expected": {
       "claim_found": true,
-      "signals_any_of": ["Loaded Language", "Scapegoating", "Fear-mongering", "False Dilemma", "Us-vs-Them Framing"]
+      "signals_any_of": [
+        "Loaded Language",
+        "Scapegoating",
+        "Fear-mongering",
+        "False Dilemma",
+        "Us-vs-Them Framing"
+      ]
     }
   },
   "spec_example": {
@@ -22,7 +28,9 @@
     "expected": {
       "claim_found": true,
       "claim_quote": "Germany accepted 1.2M migrants last year.",
-      "signals_any_of": ["Loaded Language"]
+      "signals_any_of": [
+        "Loaded Language"
+      ]
     }
   },
   "left_control": {
@@ -34,7 +42,11 @@
     },
     "expected": {
       "claim_found": false,
-      "signals_any_of": ["Dehumanization", "Scapegoating", "False Dilemma"]
+      "signals_any_of": [
+        "Dehumanization",
+        "Scapegoating",
+        "False Dilemma"
+      ]
     }
   },
   "centrist_control": {
@@ -46,7 +58,11 @@
     },
     "expected": {
       "claim_found": false,
-      "signals_any_of": ["Fear-mongering", "Us-vs-Them Framing", "Middle Ground"]
+      "signals_any_of": [
+        "Fear-mongering",
+        "Us-vs-Them Framing",
+        "Middle Ground"
+      ]
     }
   },
   "neutral_control": {
@@ -70,7 +86,9 @@
     },
     "expected": {
       "claim_found": false,
-      "background_must_not_contain": ["trusted expert"]
+      "background_must_not_contain": [
+        "trusted expert"
+      ]
     }
   },
   "merz_tenpoint": {
@@ -82,8 +100,15 @@
     },
     "expected": {
       "claim_found": false,
-      "signals_any_of": ["Loaded Language", "False Dilemma"],
-      "strict_signals_all_of": ["Fear-mongering", "False Solution", "False Dilemma"],
+      "signals_any_of": [
+        "Loaded Language",
+        "False Dilemma"
+      ],
+      "strict_signals_all_of": [
+        "Fear-mongering",
+        "False Solution",
+        "False Dilemma"
+      ],
       "strict_min_signals": 4
     }
   },
@@ -96,8 +121,15 @@
     },
     "expected": {
       "claim_found": false,
-      "signals_any_of": ["Loaded Language", "False Dilemma"],
-      "strict_signals_all_of": ["Fear-mongering", "False Solution", "False Dilemma"],
+      "signals_any_of": [
+        "Loaded Language",
+        "False Dilemma"
+      ],
+      "strict_signals_all_of": [
+        "Fear-mongering",
+        "False Solution",
+        "False Dilemma"
+      ],
       "strict_min_signals": 4
     }
   },
@@ -112,6 +144,35 @@
       "claim_found": true,
       "max_signals": 1,
       "strict_max_signals": 1
+    }
+  },
+  "weidel_east_poll": {
+    "request": {
+      "author_handle": "Alice_Weidel",
+      "author_name": "Alice Weidel",
+      "platform": "x",
+      "post_url": "https://x.com/Alice_Weidel/status/1000000000000000009",
+      "post_text": "45% across the entire East. The East is blue! 💙💙💙",
+      "quoted_post": {
+        "author_handle": "Wahlen_DE",
+        "author_name": "Deutschland Wählt",
+        "text": "EAST GERMANY | Sunday Poll Federal Election Forsa/RTL, n-tv\n\nAfD: 45% (+13.0)\nLINKE: 15% (+1.6)\nCDU: 12% (-6.7)\nSPD: 9% (-2.6)\nGRÜNE: 9% (+1.1)\nBSW: 5% (-4.4)\nOthers: 5% (-2.0)\n\nChanges compared to the 2025 election result\n#btw29",
+        "url": "https://x.com/Wahlen_DE/status/1000000000000000008"
+      },
+      "links": []
+    },
+    "expected": {
+      "claim_found": true,
+      "claim_text_any_of": [
+        "Forsa",
+        "45",
+        "East"
+      ],
+      "signals_any_of": [
+        "Us-vs-Them Framing",
+        "Loaded Language",
+        "Cherry-picking"
+      ]
     }
   }
 }

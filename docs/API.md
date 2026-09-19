@@ -43,7 +43,7 @@ framing does as well as which fact is absent. It returns the same fields; the si
 longer and `missing_context` is fuller. Nothing about the response shape changes, so a client
 that ignores the parameter is unaffected.
 
-Request (unchanged from v2):
+Request:
 
 ```json
 {
@@ -51,9 +51,42 @@ Request (unchanged from v2):
   "author_name": "Example Account",
   "post_text": "Germany accepted 1.2M migrants last year. This government clearly doesn't care about German citizens.",
   "platform": "x",
-  "post_url": "https://x.com/example/status/1000000000000000001"
+  "post_url": "https://x.com/example/status/1000000000000000001",
+  "quoted_post": {
+    "author_handle": "Wahlen_DE",
+    "author_name": "Deutschland Wählt",
+    "text": "EAST GERMANY | Sunday Poll Forsa/RTL, n-tv. AfD: 45% (+13.0). LINKE: 15% (+1.6).",
+    "url": ""
+  },
+  "links": ["https://t.co/abc123"]
 }
 ```
+
+### The context a post points at
+
+`quoted_post` and `links` are additive and both default to empty, so a client that sends
+neither behaves exactly as before and `schema_version` stays `"3"`. They are on all three POST
+endpoints.
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `quoted_post` | no | The post being quote-tweeted. Read out of the page; the backend never fetches it. |
+| `links` | no | Up to 8 URLs the post links to, as **hrefs**. X renders a link as truncated display text (`bamf.example/report-2…`), so the fetchable URL only reaches the backend if the client sends it. `t.co` is fine — the backend follows it. |
+| `linked_pages` | never send | Server-derived. Anything posted here is discarded. |
+
+A quoted post matters more than it sounds. "45% across the entire East. The East is blue!"
+names no subject and carries no checkable claim until you can see the Forsa poll it quotes, so
+the quoted text reaches **every** step, including claim extraction and the web-search query.
+
+Linked pages are fetched by the backend, capped at `LINK_FETCH_MAX` (default 2), streamed with
+a byte cap, and reach **only** the two steps that produce a verdict — step 3 of `/analyze` and
+`/analyze-claim`. `/claims` does not fetch, because it is the first call the drawer makes and
+has to stay fast.
+
+**A linked page is never citable.** `claim_check.sources` remains a strict subset of
+`evidence`, as documented below. A page the post itself links to is the post's own source, not
+independent corroboration, so it is given to the model as context and rejected as a citation.
+Responses carry it separately in `linked_pages[]`.
 
 Response, abridged. Full example: `tests/fixtures/responses_v3/claim_partially_supported.json`.
 
@@ -104,6 +137,7 @@ Render in this order. It is the reading order the product is designed around.
 | `analysis.rhetorical_signals[]` | Badges. `name` comes from the canonical list in `backend/prompts/taxonomy.py`; a name starting `Other: ` is uncategorised, render it muted. `evidence` is a verbatim quote from the post: show it under the badge or on hover. Empty list means a plainly informational post; hide the block. |
 | `analysis.speaker_context` | Headed SPEAKER CONTEXT. `name · role` on one line, `background` under it. When `background` is exactly `Unknown author`, show that and hide the `sources` list. |
 | `evidence[]` | Web results related to this post, always shown when the backend has a Brave key. Headed "What we checked against" when `main_claim.found` is true, and "Related finds" when it is false — with no claim there is nothing to check, so these are the post searched as written. Empty only when Brave is unconfigured, the budget is spent, or the search returned nothing: hide the block. |
+| `linked_pages[]` | Pages the post links to, fetched for context: `{url, final_url, title, text}`. Present on `/analyze` and `/analyze-claim`, never on `/claims`. Render it as "What the post links to", kept visually apart from `evidence` — it is the post's own source, not a check on it. Never appears in `claim_check.sources`. Empty is the normal case; hide the block. |
 | `steps`, `latency_ms`, `model`, `provider`, `cached` | Footer. |
 | `disclaimer` | Footer, always visible. |
 
@@ -250,7 +284,7 @@ The fields split by scope, which is what makes a second claim cheap:
 | Scope | Fields | Endpoint |
 | --- | --- | --- |
 | Post | `claims[]`, `rhetorical_signals`, `speaker_context`, `sources`, `evidence` | `/claims` |
-| Claim | `claim_check`, `missing_context`, `evidence` | `/analyze-claim` |
+| Claim | `claim_check`, `missing_context`, `evidence`, `linked_pages` | `/analyze-claim` |
 
 `evidence` appears on both, at different scopes. Stage 1 searches the post as written, so the
 drawer opens with links already on screen. Stage 2 re-searches for the one claim the reader

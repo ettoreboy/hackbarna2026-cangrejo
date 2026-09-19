@@ -22,6 +22,14 @@
     actionBar: '[role="group"]',
     statusLink: 'a[href*="/status/"]',
     video: 'video, [data-testid="videoPlayer"]',
+    // A quote tweet renders the quoted post inside the SAME <article>, as a second
+    // [data-testid="tweetText"]. There is no stable testid for the container, so position is
+    // what we have. Everything here fails soft to null.
+    quoteBox: 'div[role="link"]',
+    // innerText shows a link as truncated display text ("bamf.example/report-2…"); the
+    // fetchable URL only exists on the anchor. The card wrapper holds the same destination
+    // for posts that render a preview.
+    links: '[data-testid="tweetText"] a[href^="http"], [data-testid="card.wrapper"] a[href^="http"]',
   };
 
   const MARK = "data-uf-injected";
@@ -34,6 +42,43 @@
   const cards = new WeakMap();
 
   // ------------------------------------------------------------------ scraping
+
+  // Links back into X are not articles: an unauthenticated fetch returns a JavaScript shell,
+  // and a linked status is a quoted post by another name. t.co stays — it is X's shortener and
+  // the backend follows it to the destination.
+  const SELF_HOSTS = /(^|\.)(x\.com|twitter\.com)$/i;
+
+  function tweetLinks(article) {
+    const out = [];
+    for (const a of article.querySelectorAll(SELECTORS.links)) {
+      try {
+        const url = new URL(a.href);
+        if (SELF_HOSTS.test(url.hostname)) continue;
+        if (!out.includes(url.toString())) out.push(url.toString());
+      } catch {
+        // an href we cannot parse is an href we do not send
+      }
+    }
+    return out.slice(0, 4);
+  }
+
+  // The post being quote-tweeted. "45% across the entire East" is not a claim until you can
+  // see the poll it quotes, so this is context the backend needs for every step.
+  function quotedPost(article) {
+    const texts = article.querySelectorAll(SELECTORS.text);
+    if (texts.length < 2) return undefined;
+    const box = texts[1].closest(SELECTORS.quoteBox) || texts[1].parentElement;
+    const spans = Array.from(box.querySelectorAll('[data-testid="User-Name"] span'))
+      .map((s) => s.textContent.trim())
+      .filter(Boolean);
+    const handle = (spans.find((t) => t.startsWith("@")) || "").replace(/^@/, "");
+    return {
+      author_handle: handle,
+      author_name: spans.find((t) => !t.startsWith("@") && t !== "·") || handle,
+      text: texts[1].innerText.trim(),
+      url: "",
+    };
+  }
 
   function extractPost(article) {
     const textEl = article.querySelector(SELECTORS.text);
@@ -67,6 +112,8 @@
       post_text,
       platform: "x",
       post_url,
+      quoted_post: quotedPost(article),
+      links: tweetLinks(article),
       has_video: Boolean(article.querySelector(SELECTORS.video)),
     };
   }
@@ -81,6 +128,8 @@
 
   // ------------------------------------------------------------------ requests
 
+  // Both new fields are optional on the backend and default to empty, so an older backend
+  // ignores them rather than rejecting the request. See docs/API.md.
   function postBody(payload) {
     return {
       author_handle: payload.author_handle,
@@ -88,6 +137,8 @@
       post_text: payload.post_text,
       platform: "x",
       post_url: payload.post_url,
+      quoted_post: payload.quoted_post,
+      links: payload.links || [],
     };
   }
 

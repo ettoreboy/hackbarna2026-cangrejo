@@ -30,7 +30,8 @@ from backend.schemas.analysis_schema import (
 )
 from backend.services.analyzer_base import Analyzer
 from backend.services.background_service import get_author_background
-from backend.services.evidence_service import gather_evidence
+from backend.services.evidence_service import gather_evidence, search_text
+from backend.services.link_service import fetch_links, urls_for
 from backend.services.search_cache import SearchCache
 from backend.services.text_tools import snap_quote
 
@@ -94,18 +95,26 @@ async def run_pipeline(
     claim = claim_outcome.result
 
     # Step 2. Falls back to a search on the post itself, so a post with no checkable claim
-    # still hands the reader related reading.
+    # still hands the reader related reading. The linked pages need nothing from the model and
+    # nothing from the search, so they ride alongside and cost no extra wall clock.
     t0 = time.perf_counter()
-    evidence = await gather_evidence(
-        http,
-        settings,
-        claim,
-        req.post_text,
-        cache,
-        getattr(analyzer, "offline_evidence", None),
-        req.author_handle,
+    evidence, pages = await asyncio.gather(
+        gather_evidence(
+            http,
+            settings,
+            claim,
+            search_text(req.post_text, req.quoted_post),
+            cache,
+            getattr(analyzer, "offline_evidence", None),
+            req.author_handle,
+        ),
+        fetch_links(http, settings, urls_for(req.post_text, req.links, req.quoted_post, settings.link_fetch_max), cache),
     )
     timings.evidence_ms = _ms(t0)
+
+    # linked_pages is server-derived. Overwriting it unconditionally is what stops a caller
+    # POSTing fabricated pages straight into the prompt.
+    req = req.model_copy(update={"linked_pages": pages})
 
     # Step 3.
     t0 = time.perf_counter()
@@ -134,6 +143,7 @@ async def run_pipeline(
         analysis=analysis,
         evidence=evidence,
         sources=background,
+        linked_pages=pages,
         transcript=transcript,
         steps=timings,
         latency_ms=_ms(total_started),
@@ -174,10 +184,20 @@ async def discover_claims(
 
     # The post-text search needs nothing from the model, so it rides alongside the discovery
     # call and costs no wall clock. Stage 1 therefore opens with links already on screen.
+    #
+    # Stage 1 deliberately fetches nothing the post links to: it is the first call the drawer
+    # makes and has to stay fast. It does get the quoted post, which is already in the request,
+    # and which is what makes a quote-tweet searchable at all.
     async def _timed_evidence() -> list[Source]:
         started = time.perf_counter()
         found = await gather_evidence(
-            http, settings, None, req.post_text, cache, getattr(analyzer, "offline_evidence", None), req.author_handle
+            http,
+            settings,
+            None,
+            search_text(req.post_text, req.quoted_post),
+            cache,
+            getattr(analyzer, "offline_evidence", None),
+            req.author_handle,
         )
         timings.evidence_ms = _ms(started)
         return found
@@ -229,18 +249,26 @@ async def check_one_claim(
     timings = StepTimings()
     claim = req.claim
 
-    # Step 2: evidence for this claim, falling back to the post and then to canned results.
+    # Step 2: evidence for this claim, falling back to the post and then to canned results,
+    # plus whatever the post links to. Stage 1 did not fetch, so this is where the page is
+    # first read; the link cache means a second claim on the same post pays nothing.
     t0 = time.perf_counter()
-    evidence = await gather_evidence(
-        http,
-        settings,
-        MainClaim(found=True, text=claim.text, quote=claim.quote),
-        req.post_text,
-        cache,
-        getattr(analyzer, "offline_evidence", None),
-        req.author_handle,
+    evidence, pages = await asyncio.gather(
+        gather_evidence(
+            http,
+            settings,
+            MainClaim(found=True, text=claim.text, quote=claim.quote),
+            search_text(req.post_text, req.quoted_post),
+            cache,
+            getattr(analyzer, "offline_evidence", None),
+            req.author_handle,
+        ),
+        fetch_links(http, settings, urls_for(req.post_text, req.links, req.quoted_post, settings.link_fetch_max), cache),
     )
     timings.evidence_ms = _ms(t0)
+
+    # Server-derived; see run_pipeline.
+    req = req.model_copy(update={"linked_pages": pages})
 
     # Step 3: verdict on that claim.
     t0 = time.perf_counter()
@@ -257,6 +285,7 @@ async def check_one_claim(
         claim_check=check,
         missing_context=outcome.result.missing_context,
         evidence=evidence,
+        linked_pages=pages,
         steps=timings,
         latency_ms=_ms(total_started),
         provider=analyzer.name,

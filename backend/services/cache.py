@@ -37,6 +37,20 @@ def make_key(author_handle: str, post_text: str) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def context_key(links: list[str], quoted_text: str = "") -> str:
+    """Fingerprint of the context a post points at, for the response cache key.
+
+    Without it the first request for a post pins its answer for a day and across restarts, so a
+    client that starts sending links or a quoted post would keep getting the answer computed
+    before it did. Empty string when the post points at nothing, so rows written before either
+    field existed stay reachable — the same trick the rigor knob uses.
+    """
+    if not links and not quoted_text.strip():
+        return ""
+    raw = "\n".join([*sorted(links), quoted_text.strip()]).encode()
+    return ":" + hashlib.sha256(raw).hexdigest()[:12]
+
+
 class TTLCache(Generic[T]):
     def __init__(
         self,

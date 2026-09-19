@@ -1,0 +1,260 @@
+{
+  "schema_version": "3",
+  "post_text": "The Merz government's ten-point plan is pure symbolic politics. Cosmetic changes to criminal law and more citizen surveillance won't stop terrorism. We need watertight protection of our national borders and the immediate deportation of all threats.",
+  "author_handle": "example_right_mp",
+  "arms": [
+    {
+      "label": "fake:v1",
+      "provider": "fake",
+      "prompt_version": "v1",
+      "rigor": "standard",
+      "model": "fake-v3",
+      "response": {
+        "schema_version": "3",
+        "analysis": {
+          "main_claim": {
+            "found": false,
+            "text": "",
+            "quote": ""
+          },
+          "claim_check": {
+            "verdict": "no_factual_claim",
+            "explanation": "The post makes no checkable factual claim.",
+            "sources": []
+          },
+          "missing_context": "",
+          "rhetorical_signals": [
+            {
+              "name": "Loaded Language",
+              "evidence": "pure symbolic politics"
+            },
+            {
+              "name": "False Dilemma",
+              "evidence": "Cosmetic changes to criminal law and more citizen surveillance"
+            }
+          ],
+          "speaker_context": {
+            "name": "Example Right MP",
+            "role": "",
+            "background": "Unknown author"
+          }
+        },
+        "evidence": [
+          {
+            "title": "Germany's leader under huge pressure as far-right AfD gains steam, but could he be forced out? - CBS News",
+            "url": "https://www.cbsnews.com/news/germany-friedrich-merz-afd-far-right-pressure-election-berlin/",
+            "snippet": "Among other things, it provides for stricter surveillance of certain individuals deemed to pose a threat, tougher penalties for spreading terrorist propaganda and amendments to criminal law.",
+            "provider": "brave"
+          },
+          {
+            "title": "Germany Unveils 10-Point Plan Against Islamist Terrorism",
+            "url": "https://www.newsworm.de/news/germany-unveils-10-point-plan-against-islamist-terrorism",
+            "snippet": "Tougher penalties for knife attacks and more frequent use of ankle tags for people considered security threats: Following the attack on Christopher Street Day (CSD) in Berlin, the federal government approved a ten-point plan on Wednesday to strengthen protection against Islamist terrorism. Alongside tougher penalties, the plan also calls for the criminal offence of distributing propaganda materials to be expanded and for the collection of donations for terrorist purposes to be punished more severely.",
+            "provider": "brave"
+          },
+          {
+            "title": "Germany's opposition leader Merz under fire for vowing migration crackdown | Euronews",
+            "url": "https://www.euronews.com/my-europe/2025/01/24/germanys-opposition-leader-merz-under-fire-for-vowing-migration-crackdown",
+            "snippet": "The leader of the Christian Democratic Union (CDU) on Thursday presented a five-point migration plan calling for, among other things, a &quot;de facto entry ban&quot; for all people without valid documents and permanent control of all of Germany&#x27;s borders. Merz announced his plan a day after two people, including a 2-year-old boy, were killed and three others injured during an attack in the Bavarian city of Aschaffenburg. The suspect, arrested shortly afterwards, is a 28-year-old Afghan with a history of psychiatric problems and violence who said over a month ago that he would leave Germa",
+            "provider": "brave"
+          },
+          {
+            "title": "Germany: Merz pushes for tougher border policies after election win - InfoMigrants",
+            "url": "https://www.infomigrants.net/en/post/63050/germany-merz-pushes-for-tougher-border-policies-after-election-win",
+            "snippet": "&quot;But we need to protect our borders better. We must regain control over those who come into our country.&quot; Read Also German elections: Conservatives promise more restrictive migration policies · Although Merz’s mainstream conservatives won the most seats in the Bundestag, the election was a setback for traditional parties as the far-right Alternative for Germany (AfD) won over 20 percent of the vote, the strongest result for a far-right party since World War II.",
+            "provider": "brave"
+          },
+          {
+            "title": "German frontrunner vows permanent border controls after knife attack",
+            "url": "https://www.bbc.com/news/articles/ce9nvllzn7ko",
+            "snippet": "Criticising EU asylum rules as as &quot;recognisably dysfunctional&quot;, he said Germany should now &quot;exercise its right to the primacy of national law&quot;. Germany has already reinstated checks on its borders to combat illegal immigration, which is allowed temporarily under the EU&#x27;s border-free Schengen rules as a &quot;last-resort&quot; measure, but not on permanent basis. Merz also said it was time to significantly increase the number of places available for detention ahead of deportation.",
+            "provider": "brave"
+          }
+        ],
+        "sources": [],
+        "transcript": null,
+        "steps": {
+          "extract_ms": 45,
+          "evidence_ms": 1482,
+          "analyse_ms": 0
+        },
+        "cached": false,
+        "latency_ms": 1527,
+        "provider": "fake",
+        "model": "fake-v3",
+        "cost_usd": 0.0,
+        "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources."
+      },
+      "error": null,
+      "warnings": []
+    },
+    {
+      "label": "fake:v1+strict",
+      "provider": "fake",
+      "prompt_version": "v1",
+      "rigor": "strict",
+      "model": "fake-v3",
+      "response": {
+        "schema_version": "3",
+        "analysis": {
+          "main_claim": {
+            "found": false,
+            "text": "",
+            "quote": ""
+          },
+          "claim_check": {
+            "verdict": "no_factual_claim",
+            "explanation": "The post makes no checkable factual claim.",
+            "sources": []
+          },
+          "missing_context": "The post treats terrorism as an ongoing certainty without citing an incident or a trend, and gives no figure for how many people the category \"threats\" covers.",
+          "rhetorical_signals": [
+            {
+              "name": "Loaded Language",
+              "evidence": "pure symbolic politics"
+            },
+            {
+              "name": "False Dilemma",
+              "evidence": "Cosmetic changes to criminal law and more citizen surveillance"
+            },
+            {
+              "name": "Fear-mongering",
+              "evidence": "won't stop terrorism"
+            },
+            {
+              "name": "False Solution",
+              "evidence": "watertight protection of our national borders"
+            },
+            {
+              "name": "Dehumanization",
+              "evidence": "all threats"
+            },
+            {
+              "name": "Manufactured Urgency",
+              "evidence": "immediate deportation"
+            }
+          ],
+          "speaker_context": {
+            "name": "Example Right MP",
+            "role": "",
+            "background": "Unknown author"
+          }
+        },
+        "evidence": [
+          {
+            "title": "Germany's leader under huge pressure as far-right AfD gains steam, but could he be forced out? - CBS News",
+            "url": "https://www.cbsnews.com/news/germany-friedrich-merz-afd-far-right-pressure-election-berlin/",
+            "snippet": "Among other things, it provides for stricter surveillance of certain individuals deemed to pose a threat, tougher penalties for spreading terrorist propaganda and amendments to criminal law.",
+            "provider": "brave"
+          },
+          {
+            "title": "Germany Unveils 10-Point Plan Against Islamist Terrorism",
+            "url": "https://www.newsworm.de/news/germany-unveils-10-point-plan-against-islamist-terrorism",
+            "snippet": "Tougher penalties for knife attacks and more frequent use of ankle tags for people considered security threats: Following the attack on Christopher Street Day (CSD) in Berlin, the federal government approved a ten-point plan on Wednesday to strengthen protection against Islamist terrorism. Alongside tougher penalties, the plan also calls for the criminal offence of distributing propaganda materials to be expanded and for the collection of donations for terrorist purposes to be punished more severely.",
+            "provider": "brave"
+          },
+          {
+            "title": "Germany's opposition leader Merz under fire for vowing migration crackdown | Euronews",
+            "url": "https://www.euronews.com/my-europe/2025/01/24/germanys-opposition-leader-merz-under-fire-for-vowing-migration-crackdown",
+            "snippet": "The leader of the Christian Democratic Union (CDU) on Thursday presented a five-point migration plan calling for, among other things, a &quot;de facto entry ban&quot; for all people without valid documents and permanent control of all of Germany&#x27;s borders. Merz announced his plan a day after two people, including a 2-year-old boy, were killed and three others injured during an attack in the Bavarian city of Aschaffenburg. The suspect, arrested shortly afterwards, is a 28-year-old Afghan with a history of psychiatric problems and violence who said over a month ago that he would leave Germa",
+            "provider": "brave"
+          },
+          {
+            "title": "Germany: Merz pushes for tougher border policies after election win - InfoMigrants",
+            "url": "https://www.infomigrants.net/en/post/63050/germany-merz-pushes-for-tougher-border-policies-after-election-win",
+            "snippet": "&quot;But we need to protect our borders better. We must regain control over those who come into our country.&quot; Read Also German elections: Conservatives promise more restrictive migration policies · Although Merz’s mainstream conservatives won the most seats in the Bundestag, the election was a setback for traditional parties as the far-right Alternative for Germany (AfD) won over 20 percent of the vote, the strongest result for a far-right party since World War II.",
+            "provider": "brave"
+          },
+          {
+            "title": "German frontrunner vows permanent border controls after knife attack",
+            "url": "https://www.bbc.com/news/articles/ce9nvllzn7ko",
+            "snippet": "Criticising EU asylum rules as as &quot;recognisably dysfunctional&quot;, he said Germany should now &quot;exercise its right to the primacy of national law&quot;. Germany has already reinstated checks on its borders to combat illegal immigration, which is allowed temporarily under the EU&#x27;s border-free Schengen rules as a &quot;last-resort&quot; measure, but not on permanent basis. Merz also said it was time to significantly increase the number of places available for detention ahead of deportation.",
+            "provider": "brave"
+          }
+        ],
+        "sources": [],
+        "transcript": null,
+        "steps": {
+          "extract_ms": 14,
+          "evidence_ms": 0,
+          "analyse_ms": 0
+        },
+        "cached": false,
+        "latency_ms": 14,
+        "provider": "fake",
+        "model": "fake-v3",
+        "cost_usd": 0.0,
+        "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources."
+      },
+      "error": null,
+      "warnings": []
+    }
+  ],
+  "diff": {
+    "claim_agreement": 1.0,
+    "verdict_agreement": 1.0,
+    "signal_overlap": 0.3333333333333333,
+    "verdicts": {
+      "fake:v1": "no_factual_claim",
+      "fake:v1+strict": "no_factual_claim"
+    },
+    "signals": {
+      "fake:v1": [
+        "Loaded Language",
+        "False Dilemma"
+      ],
+      "fake:v1+strict": [
+        "Loaded Language",
+        "False Dilemma",
+        "Fear-mongering",
+        "False Solution",
+        "Dehumanization",
+        "Manufactured Urgency"
+      ]
+    },
+    "latency_ms": {
+      "fake:v1": 1527,
+      "fake:v1+strict": 14
+    },
+    "cost_usd": {
+      "fake:v1": 0.0,
+      "fake:v1+strict": 0.0
+    }
+  },
+  "evidence": [
+    {
+      "title": "Germany's leader under huge pressure as far-right AfD gains steam, but could he be forced out? - CBS News",
+      "url": "https://www.cbsnews.com/news/germany-friedrich-merz-afd-far-right-pressure-election-berlin/",
+      "snippet": "Among other things, it provides for stricter surveillance of certain individuals deemed to pose a threat, tougher penalties for spreading terrorist propaganda and amendments to criminal law.",
+      "provider": "brave"
+    },
+    {
+      "title": "Germany Unveils 10-Point Plan Against Islamist Terrorism",
+      "url": "https://www.newsworm.de/news/germany-unveils-10-point-plan-against-islamist-terrorism",
+      "snippet": "Tougher penalties for knife attacks and more frequent use of ankle tags for people considered security threats: Following the attack on Christopher Street Day (CSD) in Berlin, the federal government approved a ten-point plan on Wednesday to strengthen protection against Islamist terrorism. Alongside tougher penalties, the plan also calls for the criminal offence of distributing propaganda materials to be expanded and for the collection of donations for terrorist purposes to be punished more severely.",
+      "provider": "brave"
+    },
+    {
+      "title": "Germany's opposition leader Merz under fire for vowing migration crackdown | Euronews",
+      "url": "https://www.euronews.com/my-europe/2025/01/24/germanys-opposition-leader-merz-under-fire-for-vowing-migration-crackdown",
+      "snippet": "The leader of the Christian Democratic Union (CDU) on Thursday presented a five-point migration plan calling for, among other things, a &quot;de facto entry ban&quot; for all people without valid documents and permanent control of all of Germany&#x27;s borders. Merz announced his plan a day after two people, including a 2-year-old boy, were killed and three others injured during an attack in the Bavarian city of Aschaffenburg. The suspect, arrested shortly afterwards, is a 28-year-old Afghan with a history of psychiatric problems and violence who said over a month ago that he would leave Germa",
+      "provider": "brave"
+    },
+    {
+      "title": "Germany: Merz pushes for tougher border policies after election win - InfoMigrants",
+      "url": "https://www.infomigrants.net/en/post/63050/germany-merz-pushes-for-tougher-border-policies-after-election-win",
+      "snippet": "&quot;But we need to protect our borders better. We must regain control over those who come into our country.&quot; Read Also German elections: Conservatives promise more restrictive migration policies · Although Merz’s mainstream conservatives won the most seats in the Bundestag, the election was a setback for traditional parties as the far-right Alternative for Germany (AfD) won over 20 percent of the vote, the strongest result for a far-right party since World War II.",
+      "provider": "brave"
+    },
+    {
+      "title": "German frontrunner vows permanent border controls after knife attack",
+      "url": "https://www.bbc.com/news/articles/ce9nvllzn7ko",
+      "snippet": "Criticising EU asylum rules as as &quot;recognisably dysfunctional&quot;, he said Germany should now &quot;exercise its right to the primacy of national law&quot;. Germany has already reinstated checks on its borders to combat illegal immigration, which is allowed temporarily under the EU&#x27;s border-free Schengen rules as a &quot;last-resort&quot; measure, but not on permanent basis. Merz also said it was time to significantly increase the number of places available for detention ahead of deportation.",
+      "provider": "brave"
+    }
+  ],
+  "sources": [],
+  "total_latency_ms": 1542,
+  "total_cost_usd": 0.0,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. A disagreement between arms is a property of the models, not evidence that either verdict is correct."
+}

@@ -13,7 +13,7 @@ import re
 import httpx
 
 from backend.config import Settings
-from backend.schemas.analysis_schema import MainClaim, Source
+from backend.schemas.analysis_schema import MainClaim, QuotedPost, Source
 from backend.services.background_service import brave_search
 from backend.services.search_cache import SearchCache
 
@@ -31,6 +31,19 @@ def query_from_post(post_text: str) -> str:
     text = _HANDLE_RE.sub(" ", text)
     text = _HASH_RE.sub("", text)
     return " ".join(text.split())[:_MAX_QUERY_CHARS]
+
+
+def search_text(post_text: str, quoted: QuotedPost | None = None) -> str:
+    """What the post-level search should run on: the post, plus the post it quotes.
+
+    A quote-tweet keeps the reaction and gives away the substance. "45% across the entire East.
+    The East is blue!" searches for nothing; the Forsa numbers in the quoted post are the whole
+    query. The author's own words still come first, because they set the framing, and
+    ``query_from_post`` truncates at 300 characters.
+    """
+    if quoted is None or not quoted.text.strip():
+        return post_text
+    return f"{post_text}\n{quoted.text}"
 
 
 async def search_claim(

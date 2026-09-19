@@ -50,6 +50,18 @@ class Settings(BaseSettings):
     search_result_count: int = Field(default=3, alias="SEARCH_RESULT_COUNT")
     wikipedia_lang: str = Field(default="en", alias="WIKIPEDIA_LANG")
 
+    # Pages the post links to. A quoted post needs none of this — it arrives in the request.
+    # A link costs a round trip to a host named by untrusted content, so it is capped, cached,
+    # streamed and guarded. See backend/services/link_service.py for what each bound protects.
+    link_fetch_enabled: bool = Field(default=True, alias="LINK_FETCH_ENABLED")
+    link_fetch_max: int = Field(default=2, ge=0, le=8, alias="LINK_FETCH_MAX", description="links fetched per post")
+    link_timeout_seconds: float = Field(default=6.0, alias="LINK_TIMEOUT_SECONDS", description="per link")
+    # httpx timeouts are per operation, so a host dripping a byte at a time never trips them.
+    # This is the wall clock the whole link phase may not exceed.
+    link_total_seconds: float = Field(default=8.0, alias="LINK_TOTAL_SECONDS")
+    link_max_bytes: int = Field(default=40_000, alias="LINK_MAX_BYTES", description="body bytes read before the stream is cut")
+    link_max_chars: int = Field(default=1_500, alias="LINK_MAX_CHARS", description="page text kept for the prompt")
+
     # Galtea evaluation platform. Only backend/eval/galtea_sync.py reads these; the server
     # never calls Galtea, so a missing key costs nothing at runtime.
     galtea_api_key: str = Field(default="", alias="GALTEA_API_KEY")

@@ -22,7 +22,7 @@ The verdict is about the claim, never about the post. The UI must not say the po
 ## What already works in `extension/`
 
 - **Button injection**: `content/content.js` watches the timeline with a MutationObserver and adds an "Unfold" button to every tweet's action bar. Every X selector is in the `SELECTORS` map at the top of the file; a DOM change is a one-place fix.
-- **Scraping**: on click it reads the tweet text, display name, `@handle` and canonical status URL, and sends `{type: "CLAIMS", payload}` to the service worker.
+- **Scraping**: on click it reads the tweet text, display name, `@handle` and canonical status URL, and sends `{type: "CLAIMS", payload}` to the service worker. It now also reads the **quoted post** (`quoted_post`) and the **link hrefs** (`links`) — see the note below, because that code is in your tree.
 - **Service worker**: `background/background.js` is the only part that touches the network — a fetch from a content script runs with x.com's origin and X's CSP blocks localhost. It POSTs to the backend URL from `chrome.storage.sync.backendUrl` (default `http://127.0.0.1:8000`) and returns `{ok, data}` or `{ok:false, error}`.
 - **Card**: `content/card.js` renders the analysis inline under the tweet inside a Shadow DOM, so X's CSS cannot leak in. Loading, error and result states exist.
 
@@ -95,6 +95,26 @@ Error states (backend unreachable, 502 with detail, 413 "Videos over 60 s are no
 ### 4. Demo recording, Sunday 09:30 (text path only)
 
 60 to 90 seconds, text path only: scroll the timeline, click Unfold on a post, show the claim list, pick a claim, show the verdict with its citations. Save as `docs/demo.mp4` or a public link in the README.
+
+## Heads-up: I touched `extension/content/content.js`
+
+Sorry — this is your tree. Two small additions, both in `extractPost()` and `postBody()`, and
+both needed a scraper change that could not live on the backend:
+
+- `quotedPost(article)` reads the **second** `[data-testid="tweetText"]` in the article. A quote
+  tweet renders the quoted post inside the same `<article>`, and `querySelector` was returning
+  only the first. This mattered more than it sounds: "45% across the entire East. The East is
+  blue!" has no subject and no checkable claim until the backend can see the Forsa poll it
+  quotes. The quoted text now reaches every step, including the web search.
+- `tweetLinks(article)` collects `a[href]` from the tweet text and the card wrapper. `innerText`
+  renders a link as truncated display text (`bamf.example/report-2…`), so the real URL only
+  exists on the anchor. Links back into x.com are dropped; `t.co` is kept and the backend
+  follows it.
+
+New selectors are in the `SELECTORS` map as usual (`quoteBox`, `links`), and both helpers fail
+soft to `undefined` / `[]`, so a DOM change costs the context and nothing else. Revert or rework
+freely — the backend treats both fields as optional. Responses now carry `linked_pages[]` on
+`/analyze-claim`; rendering it is optional and described in `docs/API.md`.
 
 ## Things to know
 

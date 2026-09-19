@@ -28,6 +28,9 @@ def make_settings(**overrides: Any) -> Settings:
         "SEARCH_CACHE_PATH": "",
         # Both caches stay in memory: a test must never read a row an earlier run wrote.
         "RESPONSE_CACHE_PATH": "",
+        # respx raises on an unmocked host, so a fixture that gains a URL would otherwise
+        # break tests that have nothing to do with links. Switch it on per test.
+        "LINK_FETCH_ENABLED": False,
     }
     base.update(overrides)
     return Settings(_env_file=None, **base)  # type: ignore[call-arg]

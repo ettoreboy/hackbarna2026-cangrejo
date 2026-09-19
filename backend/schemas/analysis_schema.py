@@ -28,6 +28,42 @@ VERDICTS: tuple[str, ...] = ("supported", "partially_supported", "unsupported", 
 
 
 # --------------------------------------------------------------------------- requests
+#
+# A post rarely stands alone. Two kinds of context it points at carry the substance of the
+# claim, and both are additive to schema v3 because they default to empty:
+#
+#   quoted_post   the post being quote-tweeted. Scraped from the DOM by the extension, so it
+#                 costs no network call. "45% across the entire East" means nothing without
+#                 the Forsa poll in the post it quotes.
+#   links         URLs the post links to. X renders these as truncated display text, so the
+#                 fetchable href only reaches us if the client sends it.
+
+
+class QuotedPost(BaseModel):
+    """The post this one quote-tweets. Read out of the page, never fetched over the network."""
+
+    author_handle: str = Field(default="", max_length=64)
+    author_name: str = Field(default="", max_length=120)
+    text: str = Field(default="", max_length=8_000)
+    url: str = ""
+
+    @field_validator("author_handle")
+    @classmethod
+    def strip_at(cls, v: str) -> str:
+        return v.lstrip("@").strip()
+
+
+class LinkedPage(BaseModel):
+    """A page the post links to, fetched and reduced to text by backend/services/link_service.py.
+
+    ``url`` and ``final_url`` are plain strings, mirroring ``Source.url``: HttpUrl normalises
+    paths and round-trips awkwardly through model_dump/json.dumps into the search cache.
+    """
+
+    url: str
+    final_url: str = ""
+    title: str = ""
+    text: str = ""
 
 
 class AnalyzeRequest(BaseModel):
@@ -36,6 +72,12 @@ class AnalyzeRequest(BaseModel):
     post_text: str = Field(..., min_length=1, max_length=8_000)
     platform: Platform = "x"
     post_url: HttpUrl | None = None
+    quoted_post: QuotedPost | None = None
+    links: list[str] = Field(default_factory=list, max_length=8, description="URLs the post links to, as hrefs")
+    linked_pages: list[LinkedPage] = Field(
+        default_factory=list,
+        description="Server-derived. Anything sent here is discarded: the pipeline always overwrites it.",
+    )
 
     @field_validator("author_handle")
     @classmethod
@@ -240,6 +282,10 @@ class AnalyzeResponse(BaseModel):
     analysis: PostAnalysis
     evidence: list[Source] = Field(default_factory=list, description="Web results the claim was checked against")
     sources: list[Source] = Field(default_factory=list, description="Author background sources")
+    linked_pages: list[LinkedPage] = Field(
+        default_factory=list,
+        description="Pages the post links to, fetched for context. Never citable: claim_check.sources stays a subset of evidence.",
+    )
     transcript: Transcript | None = None
     steps: StepTimings = Field(default_factory=StepTimings)
     cached: bool = False
@@ -254,7 +300,12 @@ class AnalyzeResponse(BaseModel):
 
 
 class ClaimsResponse(BaseModel):
-    """Stage 1: what is checkable in this post, plus everything post-level."""
+    """Stage 1: what is checkable in this post, plus everything post-level.
+
+    No ``linked_pages`` here on purpose. Stage 1 is the first call the drawer makes and has to
+    stay fast, so it does not fetch anything the post links to; it gets the quoted post, which
+    is already in the payload. The fetch happens in stage 2, where the verdict needs it.
+    """
 
     schema_version: str = SCHEMA_VERSION
     claims: list[ClaimCandidate] = Field(default_factory=list, description="Most central first; empty means nothing checkable")
@@ -286,6 +337,10 @@ class ClaimAnalysisResponse(BaseModel):
     claim_check: ClaimCheck
     missing_context: str = ""
     evidence: list[Source] = Field(default_factory=list, description="Web results the claim was checked against")
+    linked_pages: list[LinkedPage] = Field(
+        default_factory=list,
+        description="Pages the post links to, fetched for context. Never citable: claim_check.sources stays a subset of evidence.",
+    )
     steps: StepTimings = Field(default_factory=StepTimings)
     cached: bool = False
     latency_ms: int = 0
