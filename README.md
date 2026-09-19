@@ -71,7 +71,9 @@ backend/
   config.py                      settings; ANALYZER_PROVIDER picks the analyzer
   routers/analyze.py             /analyze, /health
   services/analyzer_base.py      Analyzer protocol, AnalysisOutcome, AnalysisError
-  services/nebius_service.py     Token Factory, strict json_schema        (WP1)
+  services/nebius_service.py     Token Factory, strict json_schema
+  services/schema_tools.py       Pydantic schema -> strict structured output
+  services/pricing.py            token price table, NEBIUS_PRICES override
   services/gemini_service.py     Gemini 2.5 Flash baseline
   services/fake_service.py       deterministic offline provider
   services/background_service.py Wikipedia → Brave, never raises
@@ -82,6 +84,7 @@ backend/
   prompts/taxonomy.py            canonical signal and fallacy names
   prompts/context_prompt.py      system prompts v0 and v1, user prompt builder
   eval/                          balanced eval runner, metrics, fine-tune  (WP2, WP5)
+scripts/check_nebius.py          one-command validation of a Nebius key
 extension/                       Chrome MV3 client (Diana)
 tests/
   fixtures/posts.json            benchmark and control posts

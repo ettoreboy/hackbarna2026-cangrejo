@@ -12,11 +12,9 @@ from backend.config import Settings
 from backend.prompts.context_prompt import SYSTEM_PROMPTS, build_user_prompt
 from backend.schemas.analysis_schema import AnalysisResult, AnalyzeRequest, Source
 from backend.services.analyzer_base import AnalysisError, AnalysisOutcome
+from backend.services.pricing import cost_usd
 
 log = logging.getLogger(__name__)
-
-# USD per 1M tokens, Gemini 2.5 Flash paid tier (free tier is $0). Used only for the cost column.
-_PRICES = {"gemini-2.5-flash": (0.30, 2.50), "gemini-2.5-flash-lite": (0.10, 0.40)}
 
 
 class GeminiAnalyzer:
@@ -79,6 +77,10 @@ class GeminiAnalyzer:
         usage = getattr(response, "usage_metadata", None)
         p_tok = int(getattr(usage, "prompt_token_count", 0) or 0)
         c_tok = int(getattr(usage, "candidates_token_count", 0) or 0)
-        price = _PRICES.get(self.model)
-        cost = (p_tok * price[0] + c_tok * price[1]) / 1_000_000 if price else None
-        return AnalysisOutcome(result=result, model=self.model, prompt_tokens=p_tok, completion_tokens=c_tok, cost_usd=cost)
+        return AnalysisOutcome(
+            result=result,
+            model=self.model,
+            prompt_tokens=p_tok,
+            completion_tokens=c_tok,
+            cost_usd=cost_usd("gemini", self.model, p_tok, c_tok),
+        )

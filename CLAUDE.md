@@ -35,6 +35,20 @@ Extension: `chrome://extensions` → Developer mode → Load unpacked → `exten
 
 `ANALYZER_PROVIDER` = `nebius` (default, Token Factory, Qwen3-235B) | `gemini` (baseline) | `fake` (deterministic, offline). Per-request override: `?provider=`. Prompt versions: `?prompt_version=v0` (spec prompt, the "before") or `v1` (guarded, default).
 
+Validate a new Nebius key in one command:
+
+```bash
+.venv/bin/python scripts/check_nebius.py              # auth, model, strict JSON, one real analysis
+.venv/bin/python scripts/check_nebius.py --list-models
+```
+
+Two things to know when working on `nebius_service.py`:
+
+- **The openai SDK vendors its own HTTP stack (`httpx2`)**, so respx does not intercept it. Mock the model endpoint with `tests/nebius_mock.py`, not respx. Wikipedia and Brave use plain httpx and are still respx-mocked.
+- **Strict `json_schema` is not universal.** Pydantic schemas are sanitised by `schema_tools.to_strict_schema` (adds `additionalProperties: false`, makes every property required, drops keywords outside the subset). If a model rejects strict mode the provider retries once with `json_object` and remembers the downgrade for the process.
+
+Prices are not in the public docs. `backend/services/pricing.py` holds the table read from the console; override without code via `NEBIUS_PRICES='{"model/id": [in, out]}'` in USD per 1M tokens. An unpriced model reports `cost_usd: null` rather than a guess.
+
 ## Sponsor tracks in scope
 
 Nebius (analyzer + fine-tune), Galtea (worst-flaw eval), SLNG (speech-to-text for video posts). Nothing else.
