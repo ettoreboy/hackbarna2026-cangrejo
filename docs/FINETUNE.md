@@ -78,6 +78,39 @@ injection changed the verdict (7), label outside the taxonomy (5).
 **Batch size must be at least 16.** Nebius rejects a job where `batch_size * 8192 < 131072`;
 batch 8 returns a 422.
 
+## Result: job ftjob-ee08fbbe, succeeded
+
+Trained in 9.5 minutes, 763 650 tokens, 9 optimiser steps (packing puts several examples in
+each 8192-token context, so 175 examples over 3 epochs is 9 steps, not 33).
+
+| Step | Train loss | Validation loss |
+| --- | --- | --- |
+| 3 | 0.611 | 0.294 |
+| 6 | 0.526 | 0.250 |
+| 9 | 0.452 | 0.244 |
+
+Validation loss was still falling at the last step and never turned up, so there is no sign of
+overfitting and more epochs would probably still help. Three checkpoints were kept; the state
+file has their ids.
+
+**The served model id is not usable yet.** `fine_tuned_model` on the job is `null` and the
+checkpoint ids read
+`ft:Qwen/Qwen3-30B-A3B-Instruct-2507-...:org_placeholder:contextguard-v3:IDPlaceholder:ckpt-step-9`
+— literal placeholders where the organisation and model ids belong. This is the custom-weights
+beta in risk 1 below: the adapter exists but cannot be called until Nebius enables serving.
+
+## Known defect in this dataset
+
+Reviewing all 194 examples after the job started found label collapse: `Loaded Language` is 43%
+of every signal emitted and 10 of the 27 canonical labels never appear. The cause is
+near-duplicate entries in the taxonomy (`Fear-mongering` vs `Appeal to Fear`, `Emotional Bait`
+vs `Appeal to Emotion`) that the model cannot choose between, so a third of the vocabulary is
+dead. A separate defect: 17% of examples carry a quote that duplicates or nests inside another
+quote in the same example, because the dedupe validator compares label names and not spans.
+
+Treat this job as v1, a proof that the whole path works. The dataset needs the taxonomy fix
+before a student trained on it should be served.
+
 ## Two open risks, stated plainly
 
 1. **Serving the result is beta-on-request on Nebius.** A trained adapter that cannot be served

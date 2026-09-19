@@ -35,19 +35,20 @@ _SAFETY = [
 class GeminiAnalyzer:
     name = "gemini"
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, client: genai.Client | None = None) -> None:
         if not settings.gemini_configured:
             raise AnalysisError("GEMINI_API_KEY is not set")
         self.settings = settings
-        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.client = client or genai.Client(api_key=settings.gemini_api_key)
         self.model = settings.gemini_model
+        self.temperature = settings.gemini_temperature
 
     async def _structured(self, system: str, user: str, out: type[M], max_tokens: int) -> StepOutcome[M]:
         config = types.GenerateContentConfig(
             system_instruction=system,
             response_mime_type="application/json",
             response_schema=out,
-            temperature=0.2,
+            temperature=self.temperature,
             max_output_tokens=max_tokens,
             safety_settings=_SAFETY,
         )

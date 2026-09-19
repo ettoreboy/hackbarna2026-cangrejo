@@ -75,6 +75,21 @@ async def poll(client: AsyncOpenAI, job_id: str, state: dict, every: int) -> dic
         await asyncio.sleep(every)
 
 
+async def save_checkpoints(client: AsyncOpenAI, job_id: str, state: dict) -> None:
+    """The loss curve lives on the checkpoints endpoint, not on the job. Without this the
+    only record of how training went is lost when the process exits."""
+    try:
+        cps = await client.fine_tuning.jobs.checkpoints.list(job_id)
+    except Exception as exc:
+        print(f"could not list checkpoints: {str(exc)[:120]}")
+        return
+    state["checkpoints"] = [c.model_dump() for c in cps.data]
+    save(state)
+    for c in sorted(cps.data, key=lambda x: x.step_number or 0):
+        m = c.metrics
+        print(f"  step {c.step_number:>3}  train_loss {m.train_loss:.4f}  valid_loss {m.valid_loss:.4f}")
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--train", default="tests/eval/ft_train.jsonl")
@@ -102,8 +117,11 @@ async def main() -> int:
         state = load()
         state["job_id"] = args.status
         state = await poll(client, args.status, state, args.poll)
-        print(f"\nfinal status: {state['job']['status']}")
-        return 0 if state["job"]["status"] == "succeeded" else 1
+        status = state["job"]["status"]
+        if status == "succeeded":
+            await save_checkpoints(client, args.status, state)
+        print(f"\nfinal status: {status}")
+        return 0 if status == "succeeded" else 1
 
     train_p, valid_p = ROOT / args.train, ROOT / args.valid
     n_train, tok_train = validate_jsonl(train_p)
@@ -147,13 +165,7 @@ async def main() -> int:
     status = state["job"]["status"]
     print(f"\nfinal status: {status}")
     if status == "succeeded":
-        try:
-            cps = await client.fine_tuning.jobs.checkpoints.list(job.id)
-            state["checkpoints"] = [c.model_dump() for c in cps.data]
-            save(state)
-            print(f"checkpoints: {len(cps.data)}")
-        except Exception as exc:
-            print(f"could not list checkpoints: {str(exc)[:120]}")
+        await save_checkpoints(client, job.id, state)
     return 0 if status == "succeeded" else 1
 
 

@@ -11,7 +11,6 @@ versus 4.6 s default on the benchmark post).
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from typing import TypeVar
 
@@ -24,7 +23,12 @@ from backend.prompts.context_prompt import SYSTEM_PROMPTS, build_user_prompt
 from backend.schemas.analysis_schema import AnalysisBody, AnalyzeRequest, MainClaim, Source
 from backend.services.analyzer_base import AnalysisError, StepOutcome
 from backend.services.pricing import cost_usd
-from backend.services.schema_tools import RESPONSE_FORMAT_JSON_OBJECT, response_format_strict, schema_reminder
+from backend.services.schema_tools import (
+    RESPONSE_FORMAT_JSON_OBJECT,
+    extract_json_object,
+    response_format_strict,
+    schema_reminder,
+)
 
 log = logging.getLogger(__name__)
 
@@ -120,7 +124,7 @@ class NebiusAnalyzer:
         try:
             result = out.model_validate_json(content)
         except ValueError:
-            salvaged = _extract_json_object(content)
+            salvaged = extract_json_object(content)
             if salvaged is None:
                 log.error("unparseable model output: %s", content[:500])
                 raise AnalysisError("Nebius returned JSON that does not match the schema") from None
@@ -151,34 +155,3 @@ class NebiusAnalyzer:
         system = SYSTEM_PROMPTS[prompt_version]
         user = build_user_prompt(req, claim, evidence, background)
         return await self._structured(self.model, system, user, AnalysisBody, max_tokens=900)
-
-
-def _extract_json_object(text: str) -> dict | None:
-    """Pull the first balanced {...} out of a reply that carries extra prose or fences."""
-    start = text.find("{")
-    if start == -1:
-        return None
-    depth = 0
-    in_string = False
-    escaped = False
-    for i, ch in enumerate(text[start:], start=start):
-        if in_string:
-            if escaped:
-                escaped = False
-            elif ch == "\\":
-                escaped = True
-            elif ch == '"':
-                in_string = False
-            continue
-        if ch == '"':
-            in_string = True
-        elif ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                try:
-                    return json.loads(text[start : i + 1])
-                except ValueError:
-                    return None
-    return None

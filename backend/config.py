@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
     gemini_timeout_seconds: float = Field(default=20.0, alias="GEMINI_TIMEOUT_SECONDS")
+    # Same reason as nebius_temperature: a comparison run must measure the prompt or the
+    # provider, not sampling noise. Both arms sit at 0 by default.
+    gemini_temperature: float = Field(default=0.0, alias="GEMINI_TEMPERATURE")
 
     # Evidence and author background. Brave is prepaid ($5 per 1 000 requests): every result
     # is cached on disk and live calls stop at BRAVE_BUDGET.

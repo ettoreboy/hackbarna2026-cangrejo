@@ -18,6 +18,7 @@ Field semantics therefore belong in the prompt text (see backend/prompts/).
 from __future__ import annotations
 
 import copy
+import json
 from typing import Any
 
 from pydantic import BaseModel
@@ -75,6 +76,42 @@ def response_format_strict(name: str, schema: dict[str, Any]) -> dict[str, Any]:
 
 
 RESPONSE_FORMAT_JSON_OBJECT: dict[str, Any] = {"type": "json_object"}
+
+
+def extract_json_object(text: str) -> dict | None:
+    """Pull the first balanced {...} out of a reply that carries extra prose or fences.
+
+    Both providers need this: a model that drops out of JSON mode wraps the object in a
+    ```json fence or prefaces it with a sentence, and one strict parse failure should not
+    lose an otherwise valid answer.
+    """
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    in_string = False
+    escaped = False
+    for i, ch in enumerate(text[start:], start=start):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start : i + 1])
+                except ValueError:
+                    return None
+    return None
 
 
 def schema_reminder(model_cls: type[BaseModel]) -> str:
