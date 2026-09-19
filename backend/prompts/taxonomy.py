@@ -33,8 +33,6 @@ FALLACIES: tuple[str, ...] = (
     "Ad Hominem",
     "Hasty Generalization",
     "Slippery Slope",
-    "Appeal to Fear",
-    "Appeal to Emotion",
     "Straw Man",
     "Middle Ground",
     "Bandwagon",
@@ -63,6 +61,11 @@ _SYNONYMS: dict[str, str] = {
     "fear mongering": "Fear-mongering",
     "fearmongering": "Fear-mongering",
     "fear appeal": "Fear-mongering",
+    # "Appeal to Fear" and "Appeal to Emotion" were canonical until v3.1. Having both a
+    # tactic and a fallacy for the same thing split the label across two names and the
+    # model never picked the fallacy: 38 Fear-mongering against 0 Appeal to Fear over 194
+    # analyses. They are synonyms now.
+    "appeal to fear": "Fear-mongering",
     "dog-whistle": "Dog Whistle",
     "dog whistling": "Dog Whistle",
     "dogwhistle": "Dog Whistle",
@@ -101,7 +104,39 @@ _SYNONYMS: dict[str, str] = {
     "straw-man": "Straw Man",
     "misplaced authority": "Appeal to Authority",
     "complex question": "Loaded Question",
-    "appeal to pity": "Appeal to Emotion",
+    "appeal to emotion": "Emotional Bait",
+    "appeal to pity": "Emotional Bait",
+}
+
+# One discriminating line per label. Listing 25 bare names made the model fall back on the most
+# familiar one: "Loaded Language" was 43% of all signals emitted and 10 labels were never used
+# once. Strict grammar mode hides schema descriptions, so the cue has to be in the prompt text.
+CUES: dict[str, str] = {
+    "Loaded Language": "an emotionally charged word chosen over a neutral one",
+    "Outrage Farming": "framed to provoke sharing and anger rather than to inform",
+    "Scapegoating": "one group blamed for a complex problem",
+    "Fear-mongering": "predicts harm or catastrophe to move the reader",
+    "Dog Whistle": "coded phrasing that signals something extra to an in-group",
+    "Us-vs-Them Framing": "splits people into a virtuous us and a hostile them",
+    "Dehumanization": "people described as vermin, parasites, filth or cargo",
+    "Emotional Bait": "asks for a reaction, share or outrage rather than making a point",
+    "Manufactured Urgency": "a deadline or now-or-never framing that is not real",
+    "Cherry Picking": "one favourable number or case stands in for the whole picture",
+    "Whataboutism": "deflects by pointing at someone else's conduct",
+    "Gish Gallop": "many separate assertions at once, too many to answer",
+    "Astroturfing": "presents an organised campaign as spontaneous public feeling",
+    "False Dilemma": "only two options offered when more exist",
+    "Ad Hominem": "attacks the person instead of the argument",
+    "Hasty Generalization": "a sweeping rule drawn from one or two cases",
+    "Slippery Slope": "one step is said to lead inevitably to an extreme outcome",
+    "Straw Man": "argues against a distorted version of the other side's position",
+    "Middle Ground": "treats the midpoint between two claims as automatically correct",
+    "Bandwagon": "everyone thinks this, therefore it is true",
+    "Appeal to Authority": "cites status or a title in place of evidence",
+    "Loaded Question": "a question whose phrasing assumes the disputed fact",
+    "No True Scotsman": "redefines the group to exclude an inconvenient example",
+    "Post Hoc": "treats sequence as proof of cause",
+    "Motte and Bailey": "advances a bold claim, retreats to a modest one when challenged",
 }
 
 _CANONICAL_LOWER: dict[str, str] = {t.lower(): t for t in SIGNALS}
@@ -140,7 +175,11 @@ def is_canonical(name: str) -> bool:
 
 def prompt_block() -> str:
     """The allowed-vocabulary block inserted into the system prompt."""
+    lines = "\n".join(f"- {name}: {CUES[name]}" for name in SIGNALS)
     return (
-        "ALLOWED rhetorical_signals names: " + "; ".join(SIGNALS) + ".\n"
-        'Use these spellings exactly. If a pattern is not listed, use "Other: <short name>".'
+        "ALLOWED rhetorical_signals names, with what each one means:\n" + lines + "\n"
+        "Use these spellings exactly. Pick the most specific label that fits: if the words "
+        "dehumanise, say Dehumanization, not Loaded Language. Use Loaded Language only when no "
+        "more specific label applies.\n"
+        'If a pattern is not listed, use "Other: <short name>".'
     )

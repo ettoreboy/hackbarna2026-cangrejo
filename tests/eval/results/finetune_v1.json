@@ -1,0 +1,286 @@
+{
+  "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+  "hyperparameters": {
+    "lora": true,
+    "lora_r": 16,
+    "n_epochs": 3,
+    "batch_size": 16,
+    "learning_rate": 0.0001
+  },
+  "train_examples": 175,
+  "valid_examples": 19,
+  "started": 1789822918.4229782,
+  "training_file": "file-01a0b9c2-620b-7cbd-9b42-6596e4ca7dcc",
+  "validation_file": "file-01a0b9c2-62e5-7e24-b73d-47a0098eedc0",
+  "job_id": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96",
+  "job": {
+    "id": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96",
+    "created_at": 1789822919,
+    "error": null,
+    "fine_tuned_model": null,
+    "finished_at": 1789823495,
+    "hyperparameters": {
+      "batch_size": 16,
+      "learning_rate_multiplier": null,
+      "n_epochs": 3,
+      "learning_rate": 0.0001,
+      "warmup_ratio": 0.0,
+      "weight_decay": 0.0,
+      "packing": true,
+      "max_grad_norm": 1.0,
+      "context_length": 8192,
+      "lora": true,
+      "lora_r": 16,
+      "lora_alpha": 8,
+      "lora_dropout": 0.0
+    },
+    "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+    "object": "fine_tuning.job",
+    "organization_id": "",
+    "result_files": [
+      "file-5dcf9d4c7d1c5adfa4fa3c9d2c87cbf7",
+      "file-7142e34a33d35a81af31b496d8c287c2",
+      "file-f9d552a0af165ef69c2e19e8ab013828",
+      "file-fc662749bc8e5e2da7b2363770581e0f",
+      "file-1458b98a42ac57ebae83261ada4a8490",
+      "file-8f27131150d654d8bc0384e7864fa675",
+      "file-4795ab6639b15899a38f6ee79b4010f1",
+      "file-4ebe98bc13075ac8b6c038a86be000ea",
+      "file-6de690745ded5622b6148e5f238aaf85",
+      "file-2b2d9a6b3b085f21b5830cc354798a31",
+      "file-b607fb6497c254858a3234ceaede7945",
+      "file-0bb7d04380e95120af07dc3770f1465c",
+      "file-5fef1c895cc257ce86946666ffb7bff9",
+      "file-7c91014c1c915a529fe7e7c47617923e",
+      "file-ed80dec0175b5cba878a018285bf0517",
+      "file-b4795071c2315e73a9e2402098127d8c",
+      "file-f5492b7ac75459fd80873131dd950cbe",
+      "file-7ca368a4b1df51888665a1afc32d574f"
+    ],
+    "seed": 0,
+    "status": "succeeded",
+    "trained_tokens": 763650,
+    "training_file": "file-01a0b9c2-620b-7cbd-9b42-6596e4ca7dcc",
+    "validation_file": "file-01a0b9c2-62e5-7e24-b73d-47a0098eedc0",
+    "estimated_finish": 1789823399,
+    "integrations": null,
+    "metadata": null,
+    "method": {
+      "type": "supervised",
+      "dpo": null,
+      "reinforcement": null,
+      "supervised": {
+        "hyperparameters": {
+          "batch_size": 16,
+          "learning_rate_multiplier": null,
+          "n_epochs": 3,
+          "learning_rate": 0.0001,
+          "warmup_ratio": 0.0,
+          "weight_decay": 0.0,
+          "packing": true,
+          "max_grad_norm": 1.0,
+          "context_length": 8192,
+          "lora": true,
+          "lora_r": 16,
+          "lora_alpha": 8,
+          "lora_dropout": 0.0
+        }
+      }
+    },
+    "from_checkpoint": null,
+    "suffix": "contextguard-v3",
+    "trained_steps": 9,
+    "total_steps": 9,
+    "benchmark_mode": false,
+    "profile_mode": true
+  },
+  "events": [
+    {
+      "id": "c1257636-19dc-4661-baf3-acfcdcaf6af1",
+      "created_at": 1789822921,
+      "level": "info",
+      "message": "Job is submitted",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "api",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "2ccbf2e6-e63d-4730-9b88-b937a4821174",
+      "created_at": 1789822964,
+      "level": "info",
+      "message": "Dataset 'training' processed successfully",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "datasets",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "846ec970-0ec6-4fbf-b640-8934d1a018c6",
+      "created_at": 1789822989,
+      "level": "info",
+      "message": "Dataset 'validation' processed successfully",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "datasets",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "eff4966a-fb45-49c4-af88-21a15445330e",
+      "created_at": 1789823168,
+      "level": "info",
+      "message": "Training started",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "training",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "2e83f698-b1dd-452c-bb67-dc665c041cf1",
+      "created_at": 1789823420,
+      "level": "info",
+      "message": "Training completed successfully",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "training",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "2e83f698-b1dd-452c-bb67-dc665c041cf1",
+      "created_at": 1789823420,
+      "level": "info",
+      "message": "Training completed successfully",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "training",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "eff4966a-fb45-49c4-af88-21a15445330e",
+      "created_at": 1789823168,
+      "level": "info",
+      "message": "Training started",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "training",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "846ec970-0ec6-4fbf-b640-8934d1a018c6",
+      "created_at": 1789822989,
+      "level": "info",
+      "message": "Dataset 'validation' processed successfully",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "datasets",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "2ccbf2e6-e63d-4730-9b88-b937a4821174",
+      "created_at": 1789822964,
+      "level": "info",
+      "message": "Dataset 'training' processed successfully",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "datasets",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "c1257636-19dc-4661-baf3-acfcdcaf6af1",
+      "created_at": 1789822921,
+      "level": "info",
+      "message": "Job is submitted",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "api",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "ftckpt_d1951426-597e-4aa2-85b6-90e712e6d3d6",
+      "created_at": 1789823368,
+      "fine_tuned_model_checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-09-19:org_placeholder:contextguard-v3:IDPlaceholder:ckpt-step-3",
+      "fine_tuning_job_id": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96",
+      "metrics": {
+        "full_valid_loss": null,
+        "full_valid_mean_token_accuracy": null,
+        "step": null,
+        "train_loss": 0.6105314493179321,
+        "train_mean_token_accuracy": null,
+        "valid_loss": 0.293758749961853,
+        "valid_mean_token_accuracy": null
+      },
+      "object": "fine_tuning.job.checkpoint",
+      "step_number": 3,
+      "result_files": [
+        "file-5dcf9d4c7d1c5adfa4fa3c9d2c87cbf7",
+        "file-7142e34a33d35a81af31b496d8c287c2",
+        "file-f9d552a0af165ef69c2e19e8ab013828",
+        "file-fc662749bc8e5e2da7b2363770581e0f",
+        "file-1458b98a42ac57ebae83261ada4a8490",
+        "file-8f27131150d654d8bc0384e7864fa675"
+      ]
+    },
+    {
+      "id": "ftckpt_261dc166-777f-4b2b-9877-2e586b5a8a01",
+      "created_at": 1789823383,
+      "fine_tuned_model_checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-09-19:org_placeholder:contextguard-v3:IDPlaceholder:ckpt-step-6",
+      "fine_tuning_job_id": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96",
+      "metrics": {
+        "full_valid_loss": null,
+        "full_valid_mean_token_accuracy": null,
+        "step": null,
+        "train_loss": 0.5258455276489258,
+        "train_mean_token_accuracy": null,
+        "valid_loss": 0.2504585385322571,
+        "valid_mean_token_accuracy": null
+      },
+      "object": "fine_tuning.job.checkpoint",
+      "step_number": 6,
+      "result_files": [
+        "file-4795ab6639b15899a38f6ee79b4010f1",
+        "file-4ebe98bc13075ac8b6c038a86be000ea",
+        "file-6de690745ded5622b6148e5f238aaf85",
+        "file-2b2d9a6b3b085f21b5830cc354798a31",
+        "file-b607fb6497c254858a3234ceaede7945",
+        "file-0bb7d04380e95120af07dc3770f1465c"
+      ]
+    },
+    {
+      "id": "ftckpt_9bd224bd-93fb-47c6-9880-7c9ce51851b6",
+      "created_at": 1789823399,
+      "fine_tuned_model_checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-09-19:org_placeholder:contextguard-v3:IDPlaceholder:ckpt-step-9",
+      "fine_tuning_job_id": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96",
+      "metrics": {
+        "full_valid_loss": null,
+        "full_valid_mean_token_accuracy": null,
+        "step": null,
+        "train_loss": 0.4520096480846405,
+        "train_mean_token_accuracy": null,
+        "valid_loss": 0.24379973113536835,
+        "valid_mean_token_accuracy": null
+      },
+      "object": "fine_tuning.job.checkpoint",
+      "step_number": 9,
+      "result_files": [
+        "file-5fef1c895cc257ce86946666ffb7bff9",
+        "file-7c91014c1c915a529fe7e7c47617923e",
+        "file-ed80dec0175b5cba878a018285bf0517",
+        "file-b4795071c2315e73a9e2402098127d8c",
+        "file-f5492b7ac75459fd80873131dd950cbe",
+        "file-7ca368a4b1df51888665a1afc32d574f"
+      ]
+    }
+  ]
+}
