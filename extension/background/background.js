@@ -65,9 +65,21 @@ async function postJson(path, payload, timeoutMs) {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const type = message && message.type;
 
+  // Two-stage flow: find the claims, then check the one the reader picked.
+  if (type === "CLAIMS") {
+    postJson("/api/v1/claims", message.payload, TIMEOUT_TEXT_MS).then(sendResponse);
+    return true; // keeps the message channel open for the async reply
+  }
+
+  if (type === "ANALYZE_CLAIM") {
+    postJson("/api/v1/analyze-claim", message.payload, TIMEOUT_TEXT_MS).then(sendResponse);
+    return true;
+  }
+
+  // One-shot pipeline, kept as a fallback.
   if (type === "ANALYZE") {
     postJson("/api/v1/analyze", message.payload, TIMEOUT_TEXT_MS).then(sendResponse);
-    return true; // keeps the message channel open for the async reply
+    return true;
   }
 
   if (type === "ANALYZE_MEDIA") {

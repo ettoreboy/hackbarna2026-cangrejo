@@ -202,6 +202,135 @@ CLI equivalent, no server needed:
 .venv/bin/python scripts/compare.py --post spec_example --variants nebius:v1,gemini:v1
 ```
 
+## Two-stage claim picker
+
+`/analyze` above picks the claim itself. The two-stage flow hands that choice to the reader:
+stage 1 says what is checkable, the reader picks one, stage 2 checks it. They can come back and
+pick another.
+
+Additive: `/analyze` is unchanged and `schema_version` stays `"3"`.
+
+The fields split by scope, which is what makes a second claim cheap:
+
+| Scope | Fields | Endpoint |
+| --- | --- | --- |
+| Post | `claims[]`, `rhetorical_signals`, `speaker_context`, `sources` | `/claims` |
+| Claim | `claim_check`, `missing_context`, `evidence` | `/analyze-claim` |
+
+The author lookup and the signal pass run once, in stage 1. Checking a second claim costs one
+search plus one model call.
+
+### `POST /api/v1/claims`
+
+Request: identical to `/analyze`. Query params: `provider`, `prompt_version`, `nocache`.
+
+```json
+{
+  "schema_version": "3",
+  "claims": [
+    { "id": "c1", "text": "Germany accepted 1.2 million migrants last year.", "quote": "Germany accepted 1.2M migrants last year." },
+    { "id": "c2", "text": "Germany's asylum budget increased in 2025.", "quote": "the asylum budget keeps climbing" }
+  ],
+  "rhetorical_signals": [
+    { "name": "Loaded Language", "evidence": "clearly doesn't care about German citizens" }
+  ],
+  "speaker_context": { "name": "Example Account", "role": "", "background": "Unknown author" },
+  "sources": [],
+  "steps": { "extract_ms": 640, "evidence_ms": 0, "analyse_ms": 0 },
+  "cached": false, "latency_ms": 680,
+  "provider": "fake", "model": "fake-v3", "cost_usd": 0.0,
+  "disclaimer": "..."
+}
+```
+
+No verdict appears here; nothing has been checked yet. `claims: []` means the post carries no
+checkable factual claim, which is normal for pure rhetoric: render the signals and speaker
+blocks and say so.
+
+`claims` is ordered most central first, capped at `MAX_CLAIMS` (default 4). **Every `quote` is
+guaranteed to be a literal substring of `post_text`**: the server snaps it back onto the exact
+characters of the post and drops any claim it cannot locate, so the client can always highlight
+the span. Ids are `c1`, `c2`, ... and stay sequential after a drop.
+
+### `POST /api/v1/analyze-claim`
+
+Request is the post plus the chosen claim, exactly as stage 1 returned it. Stateless.
+
+```json
+{
+  "author_handle": "example_migrants",
+  "author_name": "Example Account",
+  "post_text": "Germany accepted 1.2M migrants last year and the asylum budget keeps climbing. ...",
+  "platform": "x",
+  "claim": { "id": "c1", "text": "Germany accepted 1.2 million migrants last year.", "quote": "Germany accepted 1.2M migrants last year." }
+}
+```
+
+```json
+{
+  "schema_version": "3",
+  "claim": { "id": "c1", "text": "...", "quote": "..." },
+  "claim_check": {
+    "verdict": "partially_supported",
+    "explanation": "The direction is reported by the sources but the scale and timeframe in the post are not.",
+    "sources": [{ "title": "Migration report 2025", "url": "https://www.bamf.example/report-2025" }]
+  },
+  "missing_context": "The figure mixes asylum applications with all forms of immigration...",
+  "evidence": [{ "title": "...", "url": "...", "snippet": "...", "provider": "brave" }],
+  "steps": { "extract_ms": 0, "evidence_ms": 520, "analyse_ms": 1220 },
+  "cached": false, "latency_ms": 1760,
+  "provider": "nebius", "model": "openai/gpt-oss-120b", "cost_usd": 0.00053,
+  "disclaimer": "..."
+}
+```
+
+`verdict` keeps four of the five values; **`no_factual_claim` is unreachable here**, because the
+reader already picked a claim. `claim_check.sources` stays a guaranteed subset of `evidence`.
+
+Returns `422` when `claim.quote` is not present in `post_text`, or when `claim.text` is blank.
+Without that check a caller could hand the model arbitrary text and have it checked as though
+someone had posted it.
+
+### Rendering
+
+Render stage 1 first, then the verdict under whichever claim is open:
+
+```
+MAIN POST          with the open claim's quote highlighted
+
+CHECKABLE CLAIMS   2 claims in this post. Pick one to check it against the web.
+  [ "Germany accepted 1.2 million migrants last year."      Check this claim ]
+      -> PARTIALLY SUPPORTED
+         The direction is reported by the sources but the scale is not.
+         [1] Migration report 2025   [2] Fact check...
+         MISSING CONTEXT  The figure mixes asylum applications with...
+  [ "Germany's asylum budget increased in 2025."            Check this claim ]
+
+RHETORICAL SIGNALS [Loaded Language]  "clearly doesn't care about German citizens"
+
+SPEAKER CONTEXT    Example Account
+                   Unknown author
+```
+
+The verdict belongs to the claim it sits under. As with `/analyze`, the UI must never label the
+post itself true or false.
+
+### Offline coverage
+
+`ANALYZER_PROVIDER=fake` covers every branch with no keys at all, including the evidence step:
+the fake carries canned web results so all four verdicts are reachable without `BRAVE_API_KEY`.
+A live Brave search always wins when it returns anything.
+
+| Handle | Stage 1 | Stage 2 |
+| --- | --- | --- |
+| `example_migrants` | 2 claims, 1 signal | `c1` partially_supported, `c2` unsupported |
+| `alice_weidel` | 2 claims, 4 signals | `c1` partially_supported, `c2` unverifiable |
+| `destatis` | 1 claim, no signals | `c1` supported |
+| `example_left_mp` | 0 claims, 3 signals | n/a |
+| `troll_account` | 0 claims, 2 signals, unknown author | n/a |
+
+Saved payloads: `tests/fixtures/responses_v3/claims_*.json` and `checked_*.json`.
+
 ## `POST /api/v1/analyze-media` (arrives Sunday morning)
 
 Video posts. The server downloads the audio with yt-dlp, transcribes it with SLNG (Deepgram Nova 3, EU region), then runs the same pipeline on the transcript.

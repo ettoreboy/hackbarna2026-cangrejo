@@ -1,0 +1,38 @@
+{
+  "schema_version": "3",
+  "claim": {
+    "id": "c1",
+    "text": "Consumer prices in Germany rose 2.2% year on year in August 2026 according to preliminary figures.",
+    "quote": "Consumer prices in Germany rose 2.2% year on year in August 2026"
+  },
+  "claim_check": {
+    "verdict": "supported",
+    "explanation": "The figure matches the preliminary release cited.",
+    "sources": [
+      {
+        "title": "Consumer price index, August 2026 - preliminary",
+        "url": "https://www.destatis.example/cpi-august-2026"
+      }
+    ]
+  },
+  "missing_context": "",
+  "evidence": [
+    {
+      "title": "Consumer price index, August 2026 - preliminary",
+      "url": "https://www.destatis.example/cpi-august-2026",
+      "snippet": "Consumer prices rose 2.2% year on year in August 2026 according to preliminary results.",
+      "provider": "brave"
+    }
+  ],
+  "steps": {
+    "extract_ms": 0,
+    "evidence_ms": 520,
+    "analyse_ms": 1220
+  },
+  "cached": false,
+  "latency_ms": 1760,
+  "provider": "fake",
+  "model": "fake-v3",
+  "cost_usd": 0.0,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns this one claim, not the whole post. Verify against the listed sources."
+}

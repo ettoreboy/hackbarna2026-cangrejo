@@ -55,6 +55,12 @@ class AnalyzeMediaRequest(BaseModel):
         return v.lstrip("@").strip()
 
 
+class AnalyzeClaimRequest(AnalyzeRequest):
+    """Stage 2: the post, plus the claim the reader picked out of stage 1."""
+
+    claim: "ClaimCandidate"
+
+
 # --------------------------------------------------------------------------- step 1 output
 
 
@@ -142,6 +148,56 @@ class PostAnalysis(BaseModel):
     speaker_context: SpeakerContext
 
 
+# --------------------------------------------------------------------------- two-stage (claim picker)
+#
+# The one-shot /analyze above picks the claim itself. The two-stage flow hands that choice to
+# the reader instead, and the fields split cleanly by scope:
+#
+#   stage 1  /claims        post-level:  claims[], rhetorical_signals, speaker_context
+#   stage 2  /analyze-claim claim-level: claim_check, missing_context, evidence
+#
+# So the Wikipedia lookup and the signal pass run once per post, and checking a second claim
+# costs one search plus one model call.
+
+
+class ClaimDraft(BaseModel):
+    """One candidate claim as the model returns it, before the server assigns an id."""
+
+    text: str = Field(..., description="The claim as one standalone, checkable sentence")
+    quote: str = Field(..., description="Verbatim span of the post that carries the claim")
+
+
+class ClaimCandidate(BaseModel):
+    """A candidate claim with a stable id the client sends back in stage 2."""
+
+    id: str
+    text: str
+    quote: str
+
+
+class DiscoveryBody(BaseModel):
+    """Stage 1 model output. Every field required so strict JSON mode works."""
+
+    claims: list[ClaimDraft]
+    rhetorical_signals: list[Signal]
+    speaker_context: SpeakerContext
+
+    @model_validator(mode="after")
+    def dedupe(self) -> "DiscoveryBody":
+        seen: set[str] = set()
+        self.rhetorical_signals = [s for s in self.rhetorical_signals if not (s.name in seen or seen.add(s.name))]
+        seen_q: set[str] = set()
+        self.claims = [c for c in self.claims if c.quote.strip() and not (c.quote in seen_q or seen_q.add(c.quote))]
+        return self
+
+
+class ClaimVerdict(BaseModel):
+    """Stage 2 model output: the verdict on one claim, and what context is missing."""
+
+    claim_check: ClaimCheck
+    missing_context: str
+
+
 # --------------------------------------------------------------------------- responses
 
 
@@ -180,6 +236,47 @@ class AnalyzeResponse(BaseModel):
     cost_usd: float | None = None
     disclaimer: str = (
         "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, "
+        "not the whole post. Verify against the listed sources."
+    )
+
+
+class ClaimsResponse(BaseModel):
+    """Stage 1: what is checkable in this post, plus everything post-level."""
+
+    schema_version: str = SCHEMA_VERSION
+    claims: list[ClaimCandidate] = Field(default_factory=list, description="Most central first; empty means nothing checkable")
+    rhetorical_signals: list[Signal] = Field(default_factory=list)
+    speaker_context: SpeakerContext
+    sources: list[Source] = Field(default_factory=list, description="Author background sources")
+    transcript: Transcript | None = None
+    steps: StepTimings = Field(default_factory=StepTimings)
+    cached: bool = False
+    latency_ms: int = 0
+    provider: str = ""
+    model: str = ""
+    cost_usd: float | None = None
+    disclaimer: str = (
+        "AI-generated analysis for media-literacy purposes. Not a fact-check. "
+        "Pick a claim to check it against the web."
+    )
+
+
+class ClaimAnalysisResponse(BaseModel):
+    """Stage 2: the verdict on the one claim the reader picked."""
+
+    schema_version: str = SCHEMA_VERSION
+    claim: ClaimCandidate
+    claim_check: ClaimCheck
+    missing_context: str = ""
+    evidence: list[Source] = Field(default_factory=list, description="Web results the claim was checked against")
+    steps: StepTimings = Field(default_factory=StepTimings)
+    cached: bool = False
+    latency_ms: int = 0
+    provider: str = ""
+    model: str = ""
+    cost_usd: float | None = None
+    disclaimer: str = (
+        "AI-generated analysis for media-literacy purposes. The verdict concerns this one claim, "
         "not the whole post. Verify against the listed sources."
     )
 

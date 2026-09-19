@@ -5,7 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
 
-from backend.schemas.analysis_schema import AnalysisBody, AnalyzeRequest, MainClaim, Source
+from backend.schemas.analysis_schema import (
+    AnalysisBody,
+    AnalyzeRequest,
+    ClaimCandidate,
+    ClaimVerdict,
+    DiscoveryBody,
+    MainClaim,
+    Source,
+)
 
 T = TypeVar("T")
 
@@ -27,6 +35,8 @@ class Analyzer(Protocol):
     name: str
     model: str
 
+    # -- one-shot pipeline (/analyze) ---------------------------------------
+
     async def extract_claim(self, req: AnalyzeRequest) -> StepOutcome[MainClaim]: ...
 
     async def analyse(
@@ -37,3 +47,25 @@ class Analyzer(Protocol):
         background: list[Source],
         prompt_version: str = "v1",
     ) -> StepOutcome[AnalysisBody]: ...
+
+    # -- two-stage claim picker (/claims, /analyze-claim) --------------------
+
+    async def discover(
+        self,
+        req: AnalyzeRequest,
+        background: list[Source],
+        max_claims: int = 4,
+        prompt_version: str = "v1",
+    ) -> StepOutcome[DiscoveryBody]:
+        """Stage 1: every checkable claim, the rhetorical signals, and who is speaking."""
+        ...
+
+    async def check_claim(
+        self,
+        req: AnalyzeRequest,
+        claim: ClaimCandidate,
+        evidence: list[Source],
+        prompt_version: str = "v1",
+    ) -> StepOutcome[ClaimVerdict]:
+        """Stage 2: verdict on the one claim the reader picked, plus what context is missing."""
+        ...

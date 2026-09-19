@@ -1,0 +1,36 @@
+{
+  "schema_version": "3",
+  "claims": [
+    {
+      "id": "c1",
+      "text": "Consumer prices in Germany rose 2.2% year on year in August 2026 according to preliminary figures.",
+      "quote": "Consumer prices in Germany rose 2.2% year on year in August 2026"
+    }
+  ],
+  "rhetorical_signals": [],
+  "speaker_context": {
+    "name": "Statistisches Bundesamt",
+    "role": "Government agency",
+    "background": "The Federal Statistical Office is the statistical agency of the German federal government."
+  },
+  "sources": [
+    {
+      "title": "Federal Statistical Office of Germany",
+      "url": "https://en.wikipedia.org/wiki/Federal_Statistical_Office_of_Germany",
+      "snippet": "The Federal Statistical Office is the statistical agency of the German federal government.",
+      "provider": "wikipedia"
+    }
+  ],
+  "transcript": null,
+  "steps": {
+    "extract_ms": 640,
+    "evidence_ms": 0,
+    "analyse_ms": 0
+  },
+  "cached": false,
+  "latency_ms": 680,
+  "provider": "fake",
+  "model": "fake-v3",
+  "cost_usd": 0.0,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. Not a fact-check. Pick a claim to check it against the web."
+}

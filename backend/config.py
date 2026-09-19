@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     background_brave_fallback: bool = Field(default=False, alias="BACKGROUND_BRAVE_FALLBACK", description="use Brave for unknown authors")
     search_cache_path: str = Field(default=".cache/brave.sqlite", alias="SEARCH_CACHE_PATH", description="empty = in-memory")
     evidence_result_count: int = Field(default=5, alias="EVIDENCE_RESULT_COUNT")
+    # Two-stage claim picker: how many candidates /claims may return. The drawer gets
+    # unreadable past four, and posts on X rarely carry more.
+    max_claims: int = Field(default=4, ge=1, le=10, alias="MAX_CLAIMS")
     search_result_count: int = Field(default=3, alias="SEARCH_RESULT_COUNT")
     wikipedia_lang: str = Field(default="en", alias="WIKIPEDIA_LANG")
 

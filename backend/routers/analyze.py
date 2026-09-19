@@ -6,10 +6,18 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from backend.schemas.analysis_schema import AnalyzeRequest, AnalyzeResponse, HealthResponse
+from backend.schemas.analysis_schema import (
+    AnalyzeClaimRequest,
+    AnalyzeRequest,
+    AnalyzeResponse,
+    ClaimAnalysisResponse,
+    ClaimsResponse,
+    HealthResponse,
+)
 from backend.services.analyzer_base import AnalysisError, Analyzer
 from backend.services.cache import make_key
-from backend.services.pipeline import run_pipeline
+from backend.services.pipeline import check_one_claim, discover_claims, run_pipeline
+from backend.services.text_tools import snap_quote
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
@@ -60,6 +68,80 @@ async def analyze(
         )
     except AnalysisError as exc:
         log.warning("analysis failed for @%s via %s: %s", req.author_handle, analyzer.name, exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    cache.set(key, response)
+    return response
+
+
+# --------------------------------------------------------------------------- two-stage flow
+
+
+@router.post("/claims", response_model=ClaimsResponse)
+async def claims(
+    req: AnalyzeRequest,
+    request: Request,
+    provider: str | None = Query(default=None, description="nebius | gemini | fake; defaults to ANALYZER_PROVIDER"),
+    prompt_version: str = Query(default="v1", pattern="^v[01]$"),
+    nocache: bool = Query(default=False),
+) -> ClaimsResponse:
+    """Stage 1: what is checkable in this post, how it is written, and who is speaking.
+
+    No claim is checked here. The reader picks one and calls /analyze-claim with it.
+    """
+    analyzer = pick_analyzer(request, provider)
+    cache = request.app.state.cache
+
+    key = make_key(f"claims:{analyzer.name}:{analyzer.model}:{prompt_version}:{req.author_handle}", req.post_text)
+    if not nocache and (hit := cache.get(key)) is not None:
+        return hit.model_copy(update={"cached": True, "latency_ms": 0})
+
+    try:
+        response = await discover_claims(
+            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version,
+            cache=request.app.state.search_cache,
+        )
+    except AnalysisError as exc:
+        log.warning("claim discovery failed for @%s via %s: %s", req.author_handle, analyzer.name, exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    cache.set(key, response)
+    return response
+
+
+@router.post("/analyze-claim", response_model=ClaimAnalysisResponse)
+async def analyze_claim(
+    req: AnalyzeClaimRequest,
+    request: Request,
+    provider: str | None = Query(default=None, description="nebius | gemini | fake; defaults to ANALYZER_PROVIDER"),
+    prompt_version: str = Query(default="v1", pattern="^v[01]$"),
+    nocache: bool = Query(default=False),
+) -> ClaimAnalysisResponse:
+    """Stage 2: check the one claim the reader picked against web evidence."""
+    analyzer = pick_analyzer(request, provider)
+    cache = request.app.state.cache
+
+    # The claim must come from the post. Without this a client could hand us arbitrary text
+    # and have the model check it as though someone had posted it.
+    if not req.claim.text.strip():
+        raise HTTPException(status_code=422, detail="claim.text must not be empty")
+    if snap_quote(req.post_text, req.claim.quote) is None:
+        raise HTTPException(status_code=422, detail="claim.quote is not present in post_text")
+
+    key = make_key(
+        f"claim:{analyzer.name}:{analyzer.model}:{prompt_version}:{req.author_handle}:{req.claim.id}",
+        req.post_text + "\x00" + req.claim.text,
+    )
+    if not nocache and (hit := cache.get(key)) is not None:
+        return hit.model_copy(update={"cached": True, "latency_ms": 0})
+
+    try:
+        response = await check_one_claim(
+            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version,
+            cache=request.app.state.search_cache,
+        )
+    except AnalysisError as exc:
+        log.warning("claim check failed for @%s via %s: %s", req.author_handle, analyzer.name, exc)
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     cache.set(key, response)

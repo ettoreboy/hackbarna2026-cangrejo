@@ -1,0 +1,36 @@
+{
+  "schema_version": "3",
+  "claims": [],
+  "rhetorical_signals": [
+    {
+      "name": "Dehumanization",
+      "evidence": "parasite"
+    },
+    {
+      "name": "Scapegoating",
+      "evidence": "Every landlord in this city"
+    },
+    {
+      "name": "False Dilemma",
+      "evidence": "Either we freeze all rents tomorrow or we watch our neighbourhoods die"
+    }
+  ],
+  "speaker_context": {
+    "name": "Example Left MP",
+    "role": "",
+    "background": "Unknown author"
+  },
+  "sources": [],
+  "transcript": null,
+  "steps": {
+    "extract_ms": 640,
+    "evidence_ms": 0,
+    "analyse_ms": 0
+  },
+  "cached": false,
+  "latency_ms": 680,
+  "provider": "fake",
+  "model": "fake-v3",
+  "cost_usd": 0.0,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. Not a fact-check. Pick a claim to check it against the web."
+}

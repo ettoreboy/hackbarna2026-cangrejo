@@ -1,0 +1,39 @@
+{
+  "schema_version": "3",
+  "claims": [
+    {
+      "id": "c1",
+      "text": "Germany accepted 1.2 million migrants last year.",
+      "quote": "Germany accepted 1.2M migrants last year"
+    },
+    {
+      "id": "c2",
+      "text": "Germany's asylum budget increased in 2025.",
+      "quote": "the asylum budget keeps climbing"
+    }
+  ],
+  "rhetorical_signals": [
+    {
+      "name": "Loaded Language",
+      "evidence": "clearly doesn't care about German citizens"
+    }
+  ],
+  "speaker_context": {
+    "name": "Example Account",
+    "role": "",
+    "background": "Unknown author"
+  },
+  "sources": [],
+  "transcript": null,
+  "steps": {
+    "extract_ms": 640,
+    "evidence_ms": 0,
+    "analyse_ms": 0
+  },
+  "cached": false,
+  "latency_ms": 680,
+  "provider": "fake",
+  "model": "fake-v3",
+  "cost_usd": 0.0,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. Not a fact-check. Pick a claim to check it against the web."
+}

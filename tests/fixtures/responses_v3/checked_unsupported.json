@@ -1,0 +1,48 @@
+{
+  "schema_version": "3",
+  "claim": {
+    "id": "c2",
+    "text": "Germany's asylum budget increased in 2025.",
+    "quote": "the asylum budget keeps climbing"
+  },
+  "claim_check": {
+    "verdict": "unsupported",
+    "explanation": "The cited budget line fell in 2025 rather than rising.",
+    "sources": [
+      {
+        "title": "Migration report 2025 - Federal Office for Migration",
+        "url": "https://www.bamf.example/report-2025"
+      },
+      {
+        "title": "Fact check: how many people came to Germany last year?",
+        "url": "https://www.news.example/factcheck-migration"
+      }
+    ]
+  },
+  "missing_context": "The figure mixes asylum applications with all forms of immigration, and a large share were Ukrainian refugees under temporary protection.",
+  "evidence": [
+    {
+      "title": "Migration report 2025 - Federal Office for Migration",
+      "url": "https://www.bamf.example/report-2025",
+      "snippet": "In 2025 Germany registered 351,915 first-time asylum applications, alongside around 1.1 million arrivals under temporary protection.",
+      "provider": "brave"
+    },
+    {
+      "title": "Fact check: how many people came to Germany last year?",
+      "url": "https://www.news.example/factcheck-migration",
+      "snippet": "The 1.2 million figure conflates asylum seekers with Ukrainian refugees and EU free movement.",
+      "provider": "brave"
+    }
+  ],
+  "steps": {
+    "extract_ms": 0,
+    "evidence_ms": 520,
+    "analyse_ms": 1220
+  },
+  "cached": false,
+  "latency_ms": 1760,
+  "provider": "fake",
+  "model": "fake-v3",
+  "cost_usd": 0.0,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns this one claim, not the whole post. Verify against the listed sources."
+}

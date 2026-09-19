@@ -77,28 +77,40 @@
     return viaReply || article.querySelector(SELECTORS.actionBar);
   }
 
-  // ------------------------------------------------------------------ request
+  // ------------------------------------------------------------------ requests
 
-  async function requestAnalysis(payload) {
-    const useMedia = MEDIA_ENABLED && payload.has_video;
-    const type = useMedia ? "ANALYZE_MEDIA" : "ANALYZE";
+  function postBody(payload) {
+    return {
+      author_handle: payload.author_handle,
+      author_name: payload.author_name,
+      post_text: payload.post_text,
+      platform: "x",
+      post_url: payload.post_url,
+    };
+  }
 
-    const body = useMedia
-      ? {
+  // Stage 1: what is checkable in this post. Nothing is checked yet.
+  async function requestClaims(payload) {
+    if (MEDIA_ENABLED && payload.has_video) {
+      return chrome.runtime.sendMessage({
+        type: "ANALYZE_MEDIA",
+        payload: {
           post_url: payload.post_url,
           author_handle: payload.author_handle,
           author_name: payload.author_name,
           platform: "x",
-        }
-      : {
-          author_handle: payload.author_handle,
-          author_name: payload.author_name,
-          post_text: payload.post_text,
-          platform: "x",
-          post_url: payload.post_url,
-        };
+        },
+      });
+    }
+    return chrome.runtime.sendMessage({ type: "CLAIMS", payload: postBody(payload) });
+  }
 
-    return chrome.runtime.sendMessage({ type, payload: body });
+  // Stage 2: check the one claim the reader picked.
+  async function requestClaimCheck(payload, claim) {
+    return chrome.runtime.sendMessage({
+      type: "ANALYZE_CLAIM",
+      payload: { ...postBody(payload), claim },
+    });
   }
 
   // ------------------------------------------------------------------ injection
@@ -124,10 +136,12 @@
 
       const payload = extractPost(article);
 
-      // Re-opening something we already analysed: no network call.
+      // The claim list for a post never changes, so reopening costs no request. Per-claim
+      // verdicts are cached inside the drawer.
+      const onCheck = (claim) => requestClaimCheck(payload, claim);
       const cached = resultCache.get(article);
       if (cached) {
-        drawer.showResult(cached.data, cached.payload, btn);
+        drawer.showClaims(cached.data, cached.payload, onCheck, btn);
         return;
       }
 
@@ -143,10 +157,10 @@
       drawer.showLoading(payload, btn);
 
       try {
-        const res = await requestAnalysis(payload);
+        const res = await requestClaims(payload);
         if (res && res.ok) {
           resultCache.set(article, { data: res.data, payload });
-          drawer.showResult(res.data, payload, btn);
+          drawer.showClaims(res.data, payload, onCheck, btn);
           btn.dataset.state = "done";
         } else {
           drawer.showError((res && res.error) || "Unknown error", btn);

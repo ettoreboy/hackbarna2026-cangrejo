@@ -19,8 +19,17 @@ from pydantic import BaseModel
 
 from backend.config import Settings
 from backend.prompts.claim_prompt import SYSTEM_CLAIM, build_claim_prompt
-from backend.prompts.context_prompt import SYSTEM_PROMPTS, build_user_prompt
-from backend.schemas.analysis_schema import AnalysisBody, AnalyzeRequest, MainClaim, Source
+from backend.prompts.claims_prompt import SYSTEM_DISCOVERY, build_discovery_prompt
+from backend.prompts.context_prompt import SYSTEM_CHECK, SYSTEM_PROMPTS, build_check_prompt, build_user_prompt
+from backend.schemas.analysis_schema import (
+    AnalysisBody,
+    AnalyzeRequest,
+    ClaimCandidate,
+    ClaimVerdict,
+    DiscoveryBody,
+    MainClaim,
+    Source,
+)
 from backend.services.analyzer_base import AnalysisError, StepOutcome
 from backend.services.pricing import cost_usd
 from backend.services.schema_tools import (
@@ -68,6 +77,8 @@ class NebiusAnalyzer:
         self._formats = {
             MainClaim: response_format_strict("main_claim", MainClaim.model_json_schema()),
             AnalysisBody: response_format_strict("post_analysis", AnalysisBody.model_json_schema()),
+            DiscoveryBody: response_format_strict("post_discovery", DiscoveryBody.model_json_schema()),
+            ClaimVerdict: response_format_strict("claim_verdict", ClaimVerdict.model_json_schema()),
         }
 
     # ------------------------------------------------------------------ transport
@@ -155,3 +166,27 @@ class NebiusAnalyzer:
         system = SYSTEM_PROMPTS[prompt_version]
         user = build_user_prompt(req, claim, evidence, background)
         return await self._structured(self.model, system, user, AnalysisBody, max_tokens=900)
+
+    # ------------------------------------------------------------------ two-stage
+
+    async def discover(
+        self,
+        req: AnalyzeRequest,
+        background: list[Source],
+        max_claims: int = 4,
+        prompt_version: str = "v1",
+    ) -> StepOutcome[DiscoveryBody]:
+        system = SYSTEM_DISCOVERY[prompt_version]
+        user = build_discovery_prompt(req, background, max_claims)
+        return await self._structured(self.model, system, user, DiscoveryBody, max_tokens=1100)
+
+    async def check_claim(
+        self,
+        req: AnalyzeRequest,
+        claim: ClaimCandidate,
+        evidence: list[Source],
+        prompt_version: str = "v1",
+    ) -> StepOutcome[ClaimVerdict]:
+        system = SYSTEM_CHECK[prompt_version]
+        user = build_check_prompt(req, claim, evidence)
+        return await self._structured(self.model, system, user, ClaimVerdict, max_tokens=600)
