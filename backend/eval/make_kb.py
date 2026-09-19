@@ -3,7 +3,7 @@
 
     .venv/bin/python -m backend.eval.make_kb
 
-ContextGuard has no fixed corpus: it is an open-web checker, and the documents it works with are
+Unfold has no fixed corpus: it is an open-web checker, and the documents it works with are
 the search results it fetches per post. Galtea's accuracy flow wants a knowledge base so it can
 generate test cases and know where the correct answer came from. The honest equivalent is the
 evidence our own runs retrieved and the verdicts they supported, so that is what this writes:

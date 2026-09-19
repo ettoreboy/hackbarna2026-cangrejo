@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Run the real ContextGuard pipeline against a Galtea version.
+"""Run the real Unfold pipeline against a Galtea version.
 
     .venv/bin/python -m backend.eval.galtea_run --version version_xxx
     .venv/bin/python -m backend.eval.galtea_run --version version_xxx --status-only

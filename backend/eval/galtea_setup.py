@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Create the judge metrics for ContextGuard's specifications and link them.
+"""Create the judge metrics for Unfold's specifications and link them.
 
     .venv/bin/python -m backend.eval.galtea_setup --dry-run
     .venv/bin/python -m backend.eval.galtea_setup
@@ -33,7 +33,7 @@ DATASET_CSV = "tests/eval/galtea_dataset.csv"
 # first, which is why an earlier run left four specifications with a metric and no test cases.
 # Each specification therefore gets its own copy of the same 50 posts. Creating a dataset from a
 # file runs no generator, so the copies cost no generation credits.
-DATASET_PREFIX = "contextguard-50"
+DATASET_PREFIX = "contextguard-50"  # an uploaded dataset name; not renamed with the product
 
 NOT_AN_ANALYSIS = (
     "\n\nBefore anything else: if the answer is not an analysis at all — it is empty, it is an "

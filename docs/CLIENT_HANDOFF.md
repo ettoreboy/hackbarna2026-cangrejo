@@ -21,7 +21,7 @@ The verdict is about the claim, never about the post. The UI must not say the po
 
 ## What already works in `extension/`
 
-- **Button injection**: `content/content.js` watches the timeline with a MutationObserver and adds a "🛡️ Context" button to every tweet's action bar. Every X selector is in the `SELECTORS` map at the top of the file; a DOM change is a one-place fix.
+- **Button injection**: `content/content.js` watches the timeline with a MutationObserver and adds an "Unfold" button to every tweet's action bar. Every X selector is in the `SELECTORS` map at the top of the file; a DOM change is a one-place fix.
 - **Scraping**: on click it reads the tweet text, display name, `@handle` and canonical status URL, and sends `{type: "CLAIMS", payload}` to the service worker.
 - **Service worker**: `background/background.js` is the only part that touches the network — a fetch from a content script runs with x.com's origin and X's CSP blocks localhost. It POSTs to the backend URL from `chrome.storage.sync.backendUrl` (default `http://127.0.0.1:8000`) and returns `{ok, data}` or `{ok:false, error}`.
 - **Card**: `content/card.js` renders the analysis inline under the tweet inside a Shadow DOM, so X's CSS cannot leak in. Loading, error and result states exist.

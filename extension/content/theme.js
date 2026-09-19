@@ -17,7 +17,7 @@
     return [Number(m[0]), Number(m[1]), Number(m[2]), m.length > 3 ? Number(m[3]) : 1];
   }
 
-  window.CG_THEME = {
+  window.UF_THEME = {
     // "light" | "dark", from whatever X is currently painting behind the timeline.
     current() {
       try {

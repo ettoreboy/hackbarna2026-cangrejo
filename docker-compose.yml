@@ -6,7 +6,7 @@
 services:
   api:
     build: .
-    image: contextguard:local
+    image: unfold:local
     ports:
       - "8000:8000"
     environment:
@@ -22,7 +22,7 @@ services:
   api-live:
     profiles: ["live"]
     build: .
-    image: contextguard:local
+    image: unfold:local
     env_file: .env
     ports:
       - "${PORT:-8000}:8000"

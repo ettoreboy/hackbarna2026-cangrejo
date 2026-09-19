@@ -8,8 +8,8 @@
 // only place that needs fixing.
 
 (() => {
-  if (window.__contextGuardLoaded) return;
-  window.__contextGuardLoaded = true;
+  if (window.__unfoldLoaded) return;
+  window.__unfoldLoaded = true;
 
   // Firefox exposes the promise-flavoured `browser`; Chrome only has `chrome`. One name for both.
   const api = globalThis.browser ?? globalThis.chrome;
@@ -24,7 +24,7 @@
     video: 'video, [data-testid="videoPlayer"]',
   };
 
-  const MARK = "data-cg-injected";
+  const MARK = "data-uf-injected";
 
   // Flip to true once POST /api/v1/analyze-media exists on the backend (owner: Ettore).
   // Until then video posts fall back to their caption text.
@@ -127,11 +127,11 @@
     article.setAttribute(MARK, "1");
 
     const btn = document.createElement("button");
-    btn.className = "cg-btn";
+    btn.className = "uf-btn";
     btn.type = "button";
     btn.title = "Unfold what this post claims";
     btn.setAttribute("aria-expanded", "false");
-    btn.innerHTML = '<span class="cg-mark">U</span><span>Unfold</span>';
+    btn.innerHTML = '<span class="uf-mark">U</span><span>Unfold</span>';
 
     btn.addEventListener("click", async (ev) => {
       // X wraps tweets in a click handler that navigates to the post. Stop that.
@@ -156,7 +156,7 @@
       // Anchor the card after the action bar so it lands in the tweet's content column.
       // Resolved again here: React may have replaced the bar since the button went in.
       const anchor = findActionBar(article) || actions;
-      const card = new window.ContextGuardCard(article, payload, apiFor(payload), anchor);
+      const card = new window.UnfoldCard(article, payload, apiFor(payload), anchor);
       cards.set(article, card);
       btn.dataset.state = "open";
       btn.setAttribute("aria-expanded", "true");

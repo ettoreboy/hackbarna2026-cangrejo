@@ -1,4 +1,4 @@
-# ContextGuard Social — working agreement
+# Unfold — working agreement
 
 Chrome extension + FastAPI backend that analyses a post on X claim-first: extract the one main factual claim, check it against web evidence, say what context is missing, name the rhetorical signals with the words that triggered them, and give neutral speaker context. The verdict is about the claim, never about the post.
 

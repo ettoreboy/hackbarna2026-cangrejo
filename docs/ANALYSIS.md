@@ -1,4 +1,4 @@
-# ContextGuard Social — Critical analysis of the specification
+# Unfold — Critical analysis of the specification
 
 > **Written before any code existed**, against the original specification (a 0–100 manipulation
 > score with tactics and inferred intent). It is kept because the design that shipped is mostly

@@ -1,7 +1,7 @@
-# ContextGuard Social backend. One stage: the image is the deps plus the source.
+# Unfold backend. One stage: the image is the deps plus the source.
 #
-#   docker build -t contextguard .
-#   docker run --rm -p 8000:8000 --env-file .env contextguard
+#   docker build -t unfold .
+#   docker run --rm -p 8000:8000 --env-file .env unfold
 #
 # Without an .env the image still runs: ANALYZER_PROVIDER defaults to fake below,
 # which serves deterministic responses and calls nothing on the network.

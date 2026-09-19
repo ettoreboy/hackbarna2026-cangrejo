@@ -22,7 +22,7 @@ from backend.services.cache import TTLCache
 from backend.services.fake_service import FakeAnalyzer
 from backend.services.search_cache import NullCache, SearchCache
 
-log = logging.getLogger("contextguard")
+log = logging.getLogger("unfold")
 
 
 def build_analyzers(settings: Settings) -> dict[str, Analyzer]:
@@ -78,7 +78,7 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
             app.state.search_cache.close()
 
     app = FastAPI(
-        title="ContextGuard Social API",
+        title="Unfold API",
         version=f"0.3.0 (schema v{SCHEMA_VERSION})",
         description="Claim-first analysis of social posts: main claim, evidence check, missing context, rhetorical signals, speaker context.",
         lifespan=lifespan,

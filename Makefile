@@ -1,4 +1,4 @@
-# ContextGuard Social — task runner.
+# Unfold — task runner.
 #
 #   make            list every target
 #   make setup      venv + deps + .env
@@ -181,7 +181,7 @@ finetune: ## Launch the LoRA job on Token Factory
 
 .PHONY: docker-build
 docker-build: ## Build the backend image
-	docker build -t contextguard:local .
+	docker build -t unfold:local .
 
 .PHONY: docker-up
 docker-up: ## Run the container in fake mode, no keys needed
@@ -236,7 +236,7 @@ extension: extension-check ## Install the extension in Chrome: copies the path, 
 	echo "    1. chrome://extensions  (opening now)"; \
 	echo "    2. turn on Developer mode, top right"; \
 	echo "    3. Load unpacked  →  paste  $(CURDIR)/extension"; \
-	echo "    4. open x.com and click 🛡️ Context on any post"; \
+	echo "    4. open x.com and click Unfold on any post"; \
 	echo; \
 	echo "  Backend must be running: make run-fake  (or make docker-up)"; \
 	echo
@@ -253,9 +253,9 @@ extension-firefox: extension-check ## Install the extension in Firefox (temporar
 	echo "    1. about:debugging#/runtime/this-firefox  (opening now)"; \
 	echo "    2. Load Temporary Add-on…"; \
 	echo "    3. paste  $(CURDIR)/extension/manifest.json   (the file, not the folder)"; \
-	echo "    4. about:addons → ContextGuard → Permissions → allow 127.0.0.1"; \
+	echo "    4. about:addons → Unfold → Permissions → allow 127.0.0.1"; \
 	echo "       (Firefox MV3 leaves host permissions off until you say yes)"; \
-	echo "    5. open x.com and click 🛡️ Context on any post"; \
+	echo "    5. open x.com and click Unfold on any post"; \
 	echo; \
 	echo "  Gone on restart — rerun this target after every Firefox launch."; \
 	echo "  Backend must be running: make run-fake  (or make docker-up)"; \
@@ -270,14 +270,14 @@ extension-check: ## Verify the extension and the backend still agree (ports, ver
 
 .PHONY: extension-reload
 extension-reload: ## What to press after editing extension/ (no restart of the backend needed)
-	@echo "  chrome://extensions → ⟳ on the ContextGuard card, then reload the x.com tab"
+	@echo "  chrome://extensions → ⟳ on the Unfold card, then reload the x.com tab"
 	@open -a "Google Chrome" "chrome://extensions" 2>/dev/null || true
 
 .PHONY: extension-zip
 extension-zip: ## Package extension/ for the demo handoff
-	@rm -f contextguard-extension.zip
-	@cd extension && zip -qr ../contextguard-extension.zip . -x '*.DS_Store'
-	@echo "wrote contextguard-extension.zip"
+	@rm -f unfold-extension.zip
+	@cd extension && zip -qr ../unfold-extension.zip . -x '*.DS_Store'
+	@echo "wrote unfold-extension.zip"
 
 .PHONY: brave-usage
 brave-usage: ## Cached results and live calls counted against the budget

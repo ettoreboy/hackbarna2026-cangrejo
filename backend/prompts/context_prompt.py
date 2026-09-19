@@ -18,7 +18,7 @@ from backend.schemas.analysis_schema import AnalyzeRequest, ClaimCandidate, Main
 POST_OPEN = "<post>"
 POST_CLOSE = "</post>"
 
-_TASK = """You are ContextGuard, an analyst in political communication and media literacy. You help a reader understand a social media post without telling them what to think.
+_TASK = """You are Unfold, an analyst in political communication and media literacy. You help a reader understand a social media post without telling them what to think.
 
 You receive: the post, the MAIN CLAIM already extracted from it, EVIDENCE from a web search about that claim, and BACKGROUND SOURCES about the author.
 
@@ -59,7 +59,7 @@ SYSTEM_PROMPTS: dict[str, str] = {"v0": SYSTEM_PROMPT_V0, "v1": SYSTEM_PROMPT_V1
 DEFAULT_PROMPT_VERSION = "v1"
 
 
-_CHECK_TASK = """You are ContextGuard. You check ONE claim a reader picked out of a social media post against the EVIDENCE supplied, and say what context is missing.
+_CHECK_TASK = """You are Unfold. You check ONE claim a reader picked out of a social media post against the EVIDENCE supplied, and say what context is missing.
 
 You receive: the post, the CLAIM the reader chose, and EVIDENCE from a web search about that claim.
 

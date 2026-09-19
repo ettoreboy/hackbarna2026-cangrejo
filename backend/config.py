@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     # Galtea evaluation platform. Only backend/eval/galtea_sync.py reads these; the server
     # never calls Galtea, so a missing key costs nothing at runtime.
     galtea_api_key: str = Field(default="", alias="GALTEA_API_KEY")
+    # Not renamed with the product: this string identifies a Galtea product that already
+    # holds 200 traces, and galtea_setup.PRODUCT_ID must keep matching it.
     galtea_product: str = Field(default="ContextGuard Social", alias="GALTEA_PRODUCT")
 
     # Speech-to-text for video posts

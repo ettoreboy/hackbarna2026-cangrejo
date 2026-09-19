@@ -404,7 +404,7 @@ def main() -> int:
     ap.add_argument("--version", required=True, help="Galtea version name, e.g. prompt-v0 or prompt-v1")
     ap.add_argument("--version-description", default="")
     ap.add_argument("--product", default=None, help="defaults to GALTEA_PRODUCT")
-    ap.add_argument("--dataset", default="contextguard-eval-50")
+    ap.add_argument("--dataset", default="contextguard-eval-50")  # uploaded name; not renamed
     ap.add_argument("--dry-run", action="store_true", help="score everything, send nothing")
     ap.add_argument("--show", type=int, default=4, help="items to print in full on a dry run")
     args = ap.parse_args()

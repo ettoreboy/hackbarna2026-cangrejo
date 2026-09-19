@@ -27,8 +27,8 @@ BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 # Wikimedia's robot policy (https://w.wiki/4wJS) returns 403 for a User-Agent with no contact
 # details. Keep the URL and address in here or author background silently stops working.
 USER_AGENT = (
-    "ContextGuardSocial/0.3 "
-    "(https://github.com/ettoreboy/hackbarna2026-cangrejo; contact@contextguard.example) "
+    "Unfold/0.3 "
+    "(https://github.com/ettoreboy/hackbarna2026-cangrejo; contact@unfold.example) "
     "httpx"
 )
 

@@ -25,7 +25,7 @@
   // gives us no confidence value to threshold on.
   const HIGH_RISK = new Set(["Dog Whistle", "Scapegoating", "Dehumanization"]);
 
-  window.CG_TAXONOMY = {
+  window.UF_TAXONOMY = {
     verdict(name) {
       return VERDICTS[String(name || "")] || FALLBACK;
     },

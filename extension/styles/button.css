@@ -4,7 +4,7 @@
    Sized and coloured to sit next to X's own reply/repost/like buttons rather than shout
    over them: same 13px label, same pill hover, X's accent blue. */
 
-.cg-btn {
+.uf-btn {
   all: unset;
   display: inline-flex;
   align-items: center;
@@ -19,7 +19,7 @@
   transition: background 120ms ease, color 120ms ease;
 }
 
-.cg-btn .cg-mark {
+.uf-btn .uf-mark {
   width: 18px;
   height: 18px;
   border-radius: 5px;
@@ -32,30 +32,30 @@
   flex-shrink: 0;
 }
 
-.cg-btn:hover {
+.uf-btn:hover {
   color: #1d9bf0;
   background: rgba(29, 155, 240, 0.1);
 }
 
-.cg-btn:focus-visible {
+.uf-btn:focus-visible {
   outline: 2px solid #1d9bf0;
   outline-offset: 2px;
 }
 
-.cg-btn[data-state="open"] {
+.uf-btn[data-state="open"] {
   color: #1d9bf0;
   background: rgba(29, 155, 240, 0.1);
 }
 
 /* X ships Dim and Lights out themes; lift the muted label so it stays readable on both. */
 @media (prefers-color-scheme: dark) {
-  .cg-btn {
+  .uf-btn {
     color: #8b98a5;
   }
 }
 
 /* The inline card sits at the end of the tweet, full width of the tweet body. */
-.cg-card-host {
+.uf-card-host {
   display: block;
   width: 100%;
 }

@@ -105,7 +105,7 @@ async def smoke(settings: Settings, model: str, region: str) -> None:
 
 async def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--name", default="contextguard-v3")
+    ap.add_argument("--name", default="contextguard-v3")  # matches the fine-tune job name; not renamed
     ap.add_argument("--gpu-type", default="gpu-h200-sxm")
     ap.add_argument("--region", default="us-central1")
     ap.add_argument("--gpu-count", type=int, default=1)

@@ -1,4 +1,4 @@
-# ContextGuard Social
+# Unfold
 
 Chrome extension plus FastAPI backend that analyses a post on X claim-first:
 
@@ -65,7 +65,7 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/analyze \
   | python3 -m json.tool
 ```
 
-Extension: `make extension` copies the path and opens the page, or by hand `chrome://extensions` → Developer mode → Load unpacked → `extension/`. Open x.com, click 🛡️ Context on any tweet.
+Extension: `make extension` copies the path and opens the page, or by hand `chrome://extensions` → Developer mode → Load unpacked → `extension/`. Open x.com, click **Unfold** on any tweet.
 
 `make extension-check` compares the two trees: the port the drawer calls, the verdict values and the high-risk signal names against `backend/prompts/taxonomy.py`. Chrome 137 and later ignore `--load-extension`, so the four clicks cannot be scripted.
 

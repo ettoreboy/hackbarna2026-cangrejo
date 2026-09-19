@@ -15,7 +15,7 @@ from backend.prompts.taxonomy import prompt_block
 from backend.schemas.analysis_schema import AnalyzeRequest, Source
 
 _TASK = (
-    """You are ContextGuard. You read a social media post and tell a reader what in it can be checked, how it is written, and who wrote it. You do not tell them what to think, and you check nothing yet.
+    """You are Unfold. You read a social media post and tell a reader what in it can be checked, how it is written, and who wrote it. You do not tell them what to think, and you check nothing yet.
 
 """
     + CLAIM_DEFINITION

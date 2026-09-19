@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ContextGuard Social",
+  "name": "Unfold",
   "version": "0.2.0",
-  "description": "Unpack the communication signals, logical fallacies and strategic intent behind posts on X. Not a fact-checker.",
+  "description": "Find the checkable claim in a post on X, check it against the web, and see what context is missing. Not a fact-checker.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -31,7 +31,7 @@
   ],
 
   "action": {
-    "default_title": "ContextGuard Social",
+    "default_title": "Unfold",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png"
@@ -40,7 +40,7 @@
 
   "browser_specific_settings": {
     "gecko": {
-      "id": "contextguard@hackbarna",
+      "id": "unfold@hackbarna",
       "strict_min_version": "115.0"
     }
   }

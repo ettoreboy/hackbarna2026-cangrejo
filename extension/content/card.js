@@ -11,7 +11,7 @@
 // A verdict always describes the claim it sits under. Nothing here labels a post true,
 // false or fake.
 //
-// Exposes window.ContextGuardCard. Loaded after taxonomy.js and theme.js.
+// Exposes window.UnfoldCard. Loaded after taxonomy.js and theme.js.
 
 (() => {
   const STYLE = `
@@ -191,7 +191,7 @@
   const WORDS = ["no", "one", "two", "three", "four", "five", "six"];
   const count = (n) => WORDS[n] || String(n);
 
-  class ContextGuardCard {
+  class UnfoldCard {
     /**
      * @param {HTMLElement} article  the tweet this card belongs to
      * @param {object} payload       scraped post: author_name, author_handle, post_text
@@ -222,7 +222,7 @@
     mount() {
       if (this.host) return;
       this.host = document.createElement("div");
-      this.host.className = "cg-card-host";
+      this.host.className = "uf-card-host";
       // X wraps the whole tweet in a click handler that navigates to the status page.
       // Everything inside the card must stay inside the card.
       for (const type of ["click", "mousedown", "mouseup", "keydown", "keyup"]) {
@@ -241,8 +241,8 @@
       this.root = this.host.attachShadow({ mode: "open" });
       this.root.innerHTML = `<style>${STYLE}</style><div class="card"></div>`;
       this.cardEl = this.root.querySelector(".card");
-      this.cardEl.setAttribute("data-theme", window.CG_THEME.current());
-      this.stopTheme = window.CG_THEME.onChange((t) => this.cardEl.setAttribute("data-theme", t));
+      this.cardEl.setAttribute("data-theme", window.UF_THEME.current());
+      this.stopTheme = window.UF_THEME.onChange((t) => this.cardEl.setAttribute("data-theme", t));
 
       this.cardEl.addEventListener("click", (ev) => {
         const el = ev.target.closest("[data-act]");
@@ -465,7 +465,7 @@
 
     _verdictBlock(data) {
       const check = data.claim_check || {};
-      const v = window.CG_TAXONOMY.verdict(check.verdict);
+      const v = window.UF_TAXONOMY.verdict(check.verdict);
       const sources = check.sources || [];
       const cites = sources.length
         ? `<ol class="cites">${sources
@@ -591,7 +591,7 @@
         <h3>Post signals</h3>
         <div class="chips">${list
           .map((s) => {
-            const other = window.CG_TAXONOMY.isUncategorised(s.name);
+            const other = window.UF_TAXONOMY.isUncategorised(s.name);
             const title = s.evidence ? ` title="${esc(s.evidence)}"` : "";
             return `<span class="chip ${other ? "other" : ""}"${title}>${esc(s.name)}</span>`;
           })
@@ -639,7 +639,7 @@
           let label = "Not checked";
           let tone = "grey";
           if (r && r.state === "done") {
-            const v = window.CG_TAXONOMY.verdict(r.data.claim_check && r.data.claim_check.verdict);
+            const v = window.UF_TAXONOMY.verdict(r.data.claim_check && r.data.claim_check.verdict);
             label = v.label;
             tone = v.tone;
           } else if (r && r.state === "error") {
@@ -663,5 +663,5 @@
     return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
   }
 
-  window.ContextGuardCard = ContextGuardCard;
+  window.UnfoldCard = UnfoldCard;
 })();

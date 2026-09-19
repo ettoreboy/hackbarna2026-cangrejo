@@ -2,6 +2,11 @@
 
 Measured 19 September 2026 at HackBarna. Nebius Token Factory, `openai/gpt-oss-120b`, `reasoning_effort=low`, live Brave evidence.
 
+> The product was renamed to Unfold after these runs. The system prompts opened "You are
+> ContextGuard" when every number below was measured, and nothing else about them changed.
+> The name never reaches the model's output, so no rendered field is affected, but the runs
+> were not repeated and these figures describe the prompt as it read that day.
+
 Two sets are used. The synthetic set measures properties that need a known-correct answer. The real-tweet set measures whether the analyzer treats the two sides of a real legislature the same.
 
 | Set | What it is | File |
