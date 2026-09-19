@@ -16,6 +16,7 @@ from backend.prompts.context_prompt import SYSTEM_PROMPTS, build_user_prompt
 from backend.schemas.analysis_schema import AnalysisBody, AnalyzeRequest, MainClaim, Source
 from backend.services.analyzer_base import AnalysisError, StepOutcome
 from backend.services.pricing import cost_usd
+from backend.services.schema_tools import extract_json_object
 
 log = logging.getLogger(__name__)
 
@@ -66,14 +67,26 @@ class GeminiAnalyzer:
         if isinstance(parsed, out):
             result = parsed
         else:
+            candidates = getattr(response, "candidates", None) or []
+            finish = getattr(candidates[0], "finish_reason", None) if candidates else None
+            finish_name = getattr(finish, "name", None) or str(finish or "")
+            if finish_name == "MAX_TOKENS":
+                raise AnalysisError("Gemini hit the token limit before closing the JSON object")
             text = getattr(response, "text", None)
             if not text:
-                raise AnalysisError("Gemini returned no content (possibly blocked by safety filter)")
+                raise AnalysisError(f"Gemini returned no content (finish_reason={finish_name or 'unknown'}, possibly blocked by safety filter)")
             try:
                 result = out.model_validate_json(text)
             except ValueError as exc:
-                log.error("unparseable model output: %s", text[:500])
-                raise AnalysisError("Gemini returned JSON that does not match the schema") from exc
+                salvaged = extract_json_object(text)
+                if salvaged is None:
+                    log.error("unparseable model output: %s", text[:500])
+                    raise AnalysisError("Gemini returned JSON that does not match the schema") from exc
+                try:
+                    result = out.model_validate(salvaged)
+                except ValueError as exc2:
+                    log.error("schema mismatch after salvage: %s", text[:500])
+                    raise AnalysisError("Gemini returned JSON that does not match the schema") from exc2
 
         usage = getattr(response, "usage_metadata", None)
         p_tok = int(getattr(usage, "prompt_token_count", 0) or 0)

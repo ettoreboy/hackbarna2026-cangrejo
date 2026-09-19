@@ -176,3 +176,64 @@ class HealthResponse(BaseModel):
     brave_live_calls: int = 0
     brave_budget: int = 0
     slng_configured: bool
+
+
+# --------------------------------------------------------------------------- comparison
+#
+# Additive to schema v3: nothing above this line changes, so SCHEMA_VERSION stays "3".
+# These types exist for the comparison runner (scripts/compare.py, POST /api/v1/compare),
+# which puts one post through several provider x prompt_version arms side by side.
+
+
+class Variant(BaseModel):
+    provider: str = Field(..., min_length=1, description="nebius | gemini | fake")
+    prompt_version: Literal["v0", "v1"] = "v1"
+    label: str = Field(default="", max_length=64, description="Display name; defaults to provider:prompt_version")
+
+    def resolved_label(self) -> str:
+        return self.label or f"{self.provider}:{self.prompt_version}"
+
+
+class CompareRequest(AnalyzeRequest):
+    variants: list[Variant] = Field(..., min_length=2, max_length=4)
+
+
+class VariantArm(BaseModel):
+    label: str
+    provider: str
+    prompt_version: str
+    model: str = ""
+    response: AnalyzeResponse | None = None
+    error: str | None = Field(default=None, description="Set when this arm failed; the other arms still ran")
+    warnings: list[str] = Field(default_factory=list, description="Quote fidelity, taxonomy and citation problems")
+
+    @property
+    def ok(self) -> bool:
+        return self.response is not None
+
+
+class CompareDiff(BaseModel):
+    """Agreement between arms. Rates are over unordered arm pairs; None when fewer than two arms succeeded."""
+
+    claim_agreement: float | None = Field(default=None, description="Share of arm pairs that extracted the same claim")
+    verdict_agreement: float | None = Field(default=None, description="Share of arm pairs with the same verdict")
+    signal_overlap: float | None = Field(default=None, description="Mean pairwise Jaccard over signal name sets")
+    verdicts: dict[str, str] = Field(default_factory=dict)
+    signals: dict[str, list[str]] = Field(default_factory=dict)
+    latency_ms: dict[str, int] = Field(default_factory=dict)
+    cost_usd: dict[str, float | None] = Field(default_factory=dict)
+
+
+class CompareResponse(BaseModel):
+    schema_version: str = SCHEMA_VERSION
+    post_text: str
+    author_handle: str
+    arms: list[VariantArm]
+    diff: CompareDiff = Field(default_factory=CompareDiff)
+    evidence: list[Source] = Field(default_factory=list, description="Evidence of the first successful arm; shared by later arms via the search cache")
+    total_latency_ms: int = 0
+    total_cost_usd: float | None = None
+    disclaimer: str = (
+        "AI-generated analysis for media-literacy purposes. A disagreement between arms is a "
+        "property of the models, not evidence that either verdict is correct."
+    )

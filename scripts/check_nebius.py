@@ -25,22 +25,15 @@ sys.path.insert(0, str(ROOT))
 import httpx  # noqa: E402
 
 from backend.config import Settings  # noqa: E402
+from backend.eval.checks import response_problems  # noqa: E402
 from backend.schemas.analysis_schema import AnalyzeRequest  # noqa: E402
 from backend.services.analyzer_base import AnalysisError  # noqa: E402
 from backend.services.nebius_service import NebiusAnalyzer  # noqa: E402
 from backend.services.pipeline import run_pipeline  # noqa: E402
 from backend.services.pricing import NEBIUS_PRICES  # noqa: E402
+from scripts._render import BAD, INFO, OK, line, render_analysis, render_timings  # noqa: E402
 
-OK, BAD, INFO = "  ok  ", " FAIL ", " .... "
 FIXTURES = json.loads((ROOT / "tests/fixtures/posts.json").read_text())
-
-
-def line(mark: str, text: str) -> None:
-    print(f"[{mark}] {text}", flush=True)
-
-
-def block(title: str, body: str) -> None:
-    print(f"\n{title}\n{body}")
 
 
 async def main() -> int:
@@ -107,42 +100,17 @@ async def main() -> int:
     mode = "strict json_schema" if all(analyzer._strict_ok.get(m, True) for m in (analyzer.model, analyzer.fast_model)) else "json_object fallback"
     line(OK, f"pipeline completed via {mode}")
 
-    a = resp.analysis
-    print("\n" + "=" * 68)
-    print(f"POST ANALYSIS — @{req.author_handle} ({args.post}, prompt {args.prompt_version})")
-    print("=" * 68)
-    if a.main_claim.found:
-        block("MAIN CLAIM", f'  "{a.main_claim.text}"\n  quoted: "{a.main_claim.quote}"')
-    else:
-        block("MAIN CLAIM", "  none found (no checkable factual claim)")
-    src = "\n".join(f"  - {s.title} — {s.url}" for s in a.claim_check.sources) or "  (none cited)"
-    block("CLAIM CHECK", f"  {a.claim_check.verdict.upper()}\n  {a.claim_check.explanation}\n  Sources:\n{src}")
-    block("MISSING CONTEXT", f"  {a.missing_context or '(none)'}")
-    sig = "\n".join(f'  [{s.name}]  "{s.evidence}"' for s in a.rhetorical_signals) or "  (none)"
-    block("RHETORICAL SIGNALS", sig)
-    sp = a.speaker_context
-    block("SPEAKER CONTEXT", f"  {sp.name}" + (f" · {sp.role}" if sp.role else "") + f"\n  {sp.background}")
+    render_analysis(resp.analysis, f"POST ANALYSIS — @{req.author_handle} ({args.post}, prompt {args.prompt_version})")
+    render_timings(resp, elapsed_ms)
 
-    cost = f"${resp.cost_usd:.5f}" if resp.cost_usd is not None else "unpriced"
-    print(f"\n    total {elapsed_ms:.0f} ms  =  claim {resp.steps.extract_ms} + evidence {resp.steps.evidence_ms} + analysis {resp.steps.analyse_ms}")
-    print(f"    cost {cost} · evidence {len(resp.evidence)} results · background {len(resp.sources)} sources")
-
-    problems = []
-    if a.main_claim.found and a.main_claim.quote and a.main_claim.quote not in req.post_text:
-        problems.append("claim quote is not verbatim from the post")
-    for s in a.rhetorical_signals:
-        if s.evidence and s.evidence not in req.post_text:
-            problems.append(f"signal {s.name} quote is not verbatim")
-        if s.name.startswith("Other: "):
-            problems.append(f"label outside the taxonomy: {s.name}")
-    evidence_urls = {e.url.rstrip('/') for e in resp.evidence}
-    for c in a.claim_check.sources:
-        if c.url.rstrip("/") not in evidence_urls:
-            problems.append(f"cited URL was not in the evidence: {c.url}")
+    problems = response_problems(resp, req.post_text)
     for p in problems:
         line(INFO, p)
 
     print()
+    if problems:
+        line(BAD, f"{len(problems)} check(s) failed")
+        return 1
     line(OK, "all checks passed")
     return 0
 
