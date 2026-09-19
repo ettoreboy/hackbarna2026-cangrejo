@@ -1,9 +1,11 @@
-// Runs inside the x.com page. Finds tweets, injects the button, scrapes the post,
-// and asks the service worker to call the backend (a content script cannot call it
-// directly - X's Content-Security-Policy blocks that, which is why background.js exists).
+// Runs inside the x.com page. Finds tweets, injects the Unfold button, scrapes the post,
+// and mounts the analysis card inline in the tweet.
 //
-// Every X-specific selector lives in SELECTORS. When X renames a data-testid, this map
-// is the only place that needs fixing.
+// A content script cannot call the backend directly - X's Content-Security-Policy blocks it -
+// so every request goes through the service worker. That is why background.js exists.
+//
+// Every X-specific selector lives in SELECTORS. When X renames a data-testid, this map is the
+// only place that needs fixing.
 
 (() => {
   if (window.__contextGuardLoaded) return;
@@ -25,11 +27,8 @@
   // Until then video posts fall back to their caption text.
   const MEDIA_ENABLED = false;
 
-  const drawer = new window.ContextGuardDrawer();
-
-  // article -> last successful { data, payload }, so re-opening a post we already
-  // analysed is instant and costs no tokens.
-  const resultCache = new WeakMap();
+  // article -> the card mounted in it, so the button toggles rather than stacking cards.
+  const cards = new WeakMap();
 
   // ------------------------------------------------------------------ scraping
 
@@ -69,8 +68,8 @@
     };
   }
 
-  // X nests several [role="group"] elements; the action bar is the one holding the
-  // reply button. Falling back to the first group keeps us working if that testid moves.
+  // X nests several [role="group"] elements; the action bar is the one holding the reply
+  // button. Falling back to the first group keeps us working if that testid moves.
   function findActionBar(article) {
     const reply = article.querySelector(SELECTORS.replyButton);
     const viaReply = reply && reply.closest(SELECTORS.actionBar);
@@ -89,28 +88,31 @@
     };
   }
 
-  // Stage 1: what is checkable in this post. Nothing is checked yet.
-  async function requestClaims(payload) {
-    if (MEDIA_ENABLED && payload.has_video) {
-      return chrome.runtime.sendMessage({
-        type: "ANALYZE_MEDIA",
-        payload: {
-          post_url: payload.post_url,
-          author_handle: payload.author_handle,
-          author_name: payload.author_name,
-          platform: "x",
-        },
-      });
-    }
-    return chrome.runtime.sendMessage({ type: "CLAIMS", payload: postBody(payload) });
-  }
-
-  // Stage 2: check the one claim the reader picked.
-  async function requestClaimCheck(payload, claim) {
-    return chrome.runtime.sendMessage({
-      type: "ANALYZE_CLAIM",
-      payload: { ...postBody(payload), claim },
-    });
+  function apiFor(payload) {
+    return {
+      // Stage 1: what is checkable in this post. Nothing is checked yet.
+      claims() {
+        if (MEDIA_ENABLED && payload.has_video) {
+          return chrome.runtime.sendMessage({
+            type: "ANALYZE_MEDIA",
+            payload: {
+              post_url: payload.post_url,
+              author_handle: payload.author_handle,
+              author_name: payload.author_name,
+              platform: "x",
+            },
+          });
+        }
+        return chrome.runtime.sendMessage({ type: "CLAIMS", payload: postBody(payload) });
+      },
+      // Stage 2: check the one claim the reader picked.
+      checkClaim(claim) {
+        return chrome.runtime.sendMessage({
+          type: "ANALYZE_CLAIM",
+          payload: { ...postBody(payload), claim },
+        });
+      },
+    };
   }
 
   // ------------------------------------------------------------------ injection
@@ -124,53 +126,38 @@
     const btn = document.createElement("button");
     btn.className = "cg-btn";
     btn.type = "button";
-    btn.title = "Unpack how this post is built";
-    btn.innerHTML = '\u{1F6E1}️ <span>Context</span>';
+    btn.title = "Unfold what this post claims";
+    btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = '<span class="cg-mark">U</span><span>Unfold</span>';
 
     btn.addEventListener("click", async (ev) => {
       // X wraps tweets in a click handler that navigates to the post. Stop that.
       ev.preventDefault();
       ev.stopPropagation();
 
-      if (btn.dataset.state === "loading") return;
+      // Open cards toggle shut; a card X recycled away is rebuilt.
+      const existing = cards.get(article);
+      if (existing && existing.mounted) {
+        existing.destroy();
+        cards.delete(article);
+        btn.dataset.state = "";
+        btn.setAttribute("aria-expanded", "false");
+        return;
+      }
 
       const payload = extractPost(article);
-
-      // The claim list for a post never changes, so reopening costs no request. Per-claim
-      // verdicts are cached inside the drawer.
-      const onCheck = (claim) => requestClaimCheck(payload, claim);
-      const cached = resultCache.get(article);
-      if (cached) {
-        drawer.showClaims(cached.data, cached.payload, onCheck, btn);
-        return;
-      }
-
       if (!payload.post_text || !payload.author_handle) {
-        const why = payload.has_video
-          ? "This post has no text to analyse. Video transcription is not enabled yet."
-          : "Could not read this post. X may have changed its layout.";
-        drawer.showError(why, btn);
-        return;
+        return; // nothing to read; leave the timeline untouched
       }
 
-      btn.dataset.state = "loading";
-      drawer.showLoading(payload, btn);
-
-      try {
-        const res = await requestClaims(payload);
-        if (res && res.ok) {
-          resultCache.set(article, { data: res.data, payload });
-          drawer.showClaims(res.data, payload, onCheck, btn);
-          btn.dataset.state = "done";
-        } else {
-          drawer.showError((res && res.error) || "Unknown error", btn);
-          btn.dataset.state = "";
-        }
-      } catch (err) {
-        // Usually means the service worker was restarted mid-flight.
-        drawer.showError(String((err && err.message) || err), btn);
-        btn.dataset.state = "";
-      }
+      // Anchor the card after the action bar so it lands in the tweet's content column.
+      // Resolved again here: React may have replaced the bar since the button went in.
+      const anchor = findActionBar(article) || actions;
+      const card = new window.ContextGuardCard(article, payload, apiFor(payload), anchor);
+      cards.set(article, card);
+      btn.dataset.state = "open";
+      btn.setAttribute("aria-expanded", "true");
+      await card.start();
     });
 
     actions.appendChild(btn);
@@ -180,8 +167,8 @@
     (root || document).querySelectorAll(SELECTORS.tweet).forEach(injectButton);
   }
 
-  // X is a single-page app: tweets stream in as you scroll and there is no page-load
-  // event to hook. Watch the DOM instead.
+  // X is a single-page app: tweets stream in as you scroll and there is no page-load event to
+  // hook. Watch the DOM instead.
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
       for (const node of m.addedNodes) {

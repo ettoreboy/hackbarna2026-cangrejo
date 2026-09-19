@@ -1,55 +1,61 @@
-/* The only CSS that lands in x.com's own stylesheet scope: the injected button.
-   Everything else renders inside a Shadow DOM and carries its own styles (see drawer.js). */
+/* The only CSS that lands in x.com's own stylesheet scope: the action-bar button.
+   The card renders inside a Shadow DOM and carries its own styles (see card.js).
+
+   Sized and coloured to sit next to X's own reply/repost/like buttons rather than shout
+   over them: same 13px label, same pill hover, X's accent blue. */
 
 .cg-btn {
   all: unset;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
-  padding: 4px 10px;
+  gap: 6px;
+  margin-left: 6px;
+  padding: 5px 11px 5px 6px;
   border-radius: 9999px;
   font: 600 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #1d4ed8;
-  background: rgba(29, 78, 216, 0.08);
+  color: #536471;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.cg-btn .cg-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: #1d9bf0;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .cg-btn:hover {
-  background: rgba(29, 78, 216, 0.18);
+  color: #1d9bf0;
+  background: rgba(29, 155, 240, 0.1);
 }
 
 .cg-btn:focus-visible {
-  outline: 2px solid #1d4ed8;
+  outline: 2px solid #1d9bf0;
   outline-offset: 2px;
 }
 
-.cg-btn[data-state="loading"] {
-  opacity: 0.6;
-  cursor: progress;
+.cg-btn[data-state="open"] {
+  color: #1d9bf0;
+  background: rgba(29, 155, 240, 0.1);
 }
 
-.cg-btn[data-state="done"] {
-  color: #047857;
-  background: rgba(4, 120, 87, 0.1);
-}
-
-/* X ships a dark theme; lift the colours so the button stays readable on it. */
+/* X ships Dim and Lights out themes; lift the muted label so it stays readable on both. */
 @media (prefers-color-scheme: dark) {
   .cg-btn {
-    color: #93c5fd;
-    background: rgba(147, 197, 253, 0.12);
+    color: #8b98a5;
   }
-  .cg-btn:hover {
-    background: rgba(147, 197, 253, 0.22);
-  }
-  .cg-btn:focus-visible {
-    outline-color: #93c5fd;
-  }
-  .cg-btn[data-state="done"] {
-    color: #6ee7b7;
-    background: rgba(110, 231, 183, 0.14);
-  }
+}
+
+/* The inline card sits at the end of the tweet, full width of the tweet body. */
+.cg-card-host {
+  display: block;
+  width: 100%;
 }
