@@ -13,7 +13,7 @@ from backend.services.analyzer_base import AnalysisError, StepOutcome
 from backend.services.background_service import BRAVE_SEARCH_URL
 from backend.services.compare import _jaccard, _same_claim
 from backend.services.fake_service import FakeAnalyzer
-from tests.conftest import FIXTURES, WIKI_RE, _client_for, brave_ok, make_settings
+from tests.conftest import FIXTURES, WIKI_RE, _client_for, brave_ok, make_settings, wiki_ok
 
 
 class BoomAnalyzer:
@@ -158,3 +158,19 @@ def test_same_claim_accepts_a_longer_quote_of_the_same_span():
     assert not _same_claim(resp(True, "Germany accepted 1.2M migrants"), resp(True, "inflation rose 2.2%"))
     assert not _same_claim(resp(True, "anything"), resp(False, ""))
     assert _same_claim(resp(False, ""), resp(False, ""))
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_compare_carries_evidence_and_author_background(compare_client):
+    """Both source lists ride at the top level so the runner can show them once, not per arm."""
+    respx.get(url__regex=WIKI_RE).mock(return_value=wiki_ok("Alice Weidel", "German politician, co-leader of the AfD."))
+    respx.get(BRAVE_SEARCH_URL).mock(return_value=brave_ok(("BAMF 2025", "https://bamf.example/2025", "…")))
+    body = _body("weidel_immigration", {"provider": "fake"}, {"provider": "fake", "prompt_version": "v0"})
+    res = await compare_client.post("/api/v1/compare", json=body)
+    assert res.status_code == 200, res.text
+    out = res.json()
+    assert [s["url"] for s in out["evidence"]] == ["https://bamf.example/2025"]
+    assert [s["provider"] for s in out["sources"]] == ["wikipedia"]
+    # The top-level lists are the first successful arm's, shared by the rest via the cache.
+    assert out["sources"] == out["arms"][0]["response"]["sources"]

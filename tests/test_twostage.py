@@ -6,9 +6,11 @@ the client can highlight them, and stage 2 must refuse a claim that did not come
 
 from __future__ import annotations
 
+import httpx
 import pytest
 import respx
 
+from backend.services.background_service import BRAVE_SEARCH_URL
 from tests.conftest import FIXTURES, WIKI_RE, brave_ok, wiki_ok
 
 MIGRANTS = {
@@ -293,3 +295,22 @@ async def test_one_shot_analyze_still_works(client):
     assert r.status_code == 200
     assert r.json()["schema_version"] == "3"
     assert "main_claim" in r.json()["analysis"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_stage_one_carries_related_finds(client_with_brave):
+    """The drawer opens on stage 1, so stage 1 must already have links to show."""
+    respx.get(url__regex=WIKI_RE).mock(return_value=httpx.Response(404))
+    brave = respx.get(BRAVE_SEARCH_URL).mock(
+        return_value=brave_ok(("Asylum budget 2026", "https://bamf.example/budget", "…"))
+    )
+    res = await client_with_brave.post("/api/v1/claims", json=MIGRANTS)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert [s["url"] for s in body["evidence"]] == ["https://bamf.example/budget"]
+    # Stage 1 searches the post, not a claim: the reader has not picked one yet.
+    queries = [c.request.url.params["q"] for c in brave.calls]
+    assert len(queries) == 1 and queries[0].startswith("Germany accepted 1.2M migrants")
+    # Still no verdict anywhere in stage 1.
+    assert "claim_check" not in body

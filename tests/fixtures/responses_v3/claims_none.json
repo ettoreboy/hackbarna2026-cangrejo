@@ -21,10 +21,24 @@
     "background": "Unknown author"
   },
   "sources": [],
+  "evidence": [
+    {
+      "title": "What the evidence says about rent control",
+      "url": "https://www.econ.example/rent-control-evidence",
+      "snippet": "Reviews find rent caps protect sitting tenants in the short run while reducing rental supply over time.",
+      "provider": "brave"
+    },
+    {
+      "title": "City housing market report 2026",
+      "url": "https://www.cityhousing.example/report-2026",
+      "snippet": "Median rents rose 7% year on year; the report attributes most of the rise to a shortfall in new construction.",
+      "provider": "brave"
+    }
+  ],
   "transcript": null,
   "steps": {
     "extract_ms": 640,
-    "evidence_ms": 0,
+    "evidence_ms": 310,
     "analyse_ms": 0
   },
   "cached": false,
