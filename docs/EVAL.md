@@ -94,6 +94,55 @@ Two explanations remain open and this set cannot separate them. The tweets are f
 
 Figurative attack lines were being promoted into checkable claims: "the President has been missing" was extracted and then fact-checked, as was "Biden green-lighted Putin to invade Ukraine". Both are rhetoric, not assertions. The claim prompt now excludes figurative and hyperbolic statements with worked examples, and the number of posts correctly returning "no factual claim" rose from 9 to 12 of 50. Whether that also moved the party gap is unproven for the reason in section 3.
 
+## Published to Galtea
+
+`backend/eval/galtea_sync.py` pushes a run that already exists on disk to the Galtea platform as
+a scored product version. It imports no analyzer and no HTTP client, so it cannot call Nebius or
+Brave even by accident: a sync is free and takes seconds.
+
+```bash
+.venv/bin/python -m backend.eval.galtea_sync --results tests/eval/results/nebius_openai-gpt-oss-120b_v0.json --version prompt-v0 --dry-run
+.venv/bin/python -m backend.eval.galtea_sync --results tests/eval/results/nebius_openai-gpt-oss-120b_v0.json --version prompt-v0
+.venv/bin/python -m backend.eval.galtea_sync --results tests/eval/results/nebius_openai-gpt-oss-120b_v1.json --version prompt-v1
+```
+
+The two versions carry the same 50 test cases, so the dashboard compares them directly:
+
+| Galtea metric | prompt-v0 | prompt-v1 | n |
+| --- | --- | --- | --- |
+| grounded-speaker | 0.00 | **1.00** | 41 |
+| injection-resistance | 0.20 | **1.00** | 10 |
+| neutral-restraint | 0.00 | **1.00** | 10 |
+| vocabulary-adherence | 0.31 | **0.95** | 48 / 40 |
+| quote-fidelity | 0.79 | **0.98** | 50 |
+| verdict-symmetry | 0.40 | **0.73** | 30 |
+| signal-symmetry | 0.77 | 0.72 | 30 |
+| cited-only | 1.00 | 1.00 | 14 / 12 |
+| speaker-grounding | 1.00 | 0.89 | 9 |
+
+### How eleven run-level metrics became nine per-trace ones
+
+Galtea scores one test case at a time; `metrics.py` scores a whole run. The split:
+
+- **Six restate cleanly for one item** — quote fidelity, vocabulary adherence, cited-only,
+  neutral restraint, grounded speaker, speaker grounding. Each is already a judgement about one
+  post that `metrics.py` happens to average.
+- **Three are pairwise** — signal symmetry, verdict symmetry and injection resistance are
+  statements about *two* posts. The pair's score is attached to both halves, and each metric
+  description on the platform says so, so nobody reads 0.50 as a verdict on one post. This is why
+  their `n` is 30 and 10 rather than 15 and 5.
+- **Two are not sent at all.** Party signal balance and party verdict balance compare two
+  populations of 25 tweets; writing a run constant onto 50 traces would claim n=50 for a
+  statistic with n=1. They stay in section 2 of this document.
+
+**A metric that does not apply to an item is omitted, not scored zero.** Scoring "neutral
+restraint" zero on a political post would drag the average down for a rule that never applied to
+it. That is why the columns above have different `n` values.
+
+The per-trace numbers macro-average over posts while section 1 micro-averages over quotes and
+labels, so the two tables can differ by a point or two on the ratio metrics. Both are correct;
+they weight differently.
+
 ## Reproducing
 
 ```bash
