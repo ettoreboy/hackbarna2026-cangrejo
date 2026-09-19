@@ -30,7 +30,7 @@ from backend.schemas.analysis_schema import (
 )
 from backend.services.analyzer_base import Analyzer
 from backend.services.background_service import get_author_background
-from backend.services.evidence_service import search_claim
+from backend.services.evidence_service import gather_evidence
 from backend.services.search_cache import SearchCache
 from backend.services.text_tools import snap_quote
 
@@ -92,9 +92,18 @@ async def run_pipeline(
     timings.extract_ms = _ms(t0)
     claim = claim_outcome.result
 
-    # Step 2.
+    # Step 2. Falls back to a search on the post itself, so a post with no checkable claim
+    # still hands the reader related reading.
     t0 = time.perf_counter()
-    evidence = await search_claim(http, settings, claim, cache)
+    evidence = await gather_evidence(
+        http,
+        settings,
+        claim,
+        req.post_text,
+        cache,
+        getattr(analyzer, "offline_evidence", None),
+        req.author_handle,
+    )
     timings.evidence_ms = _ms(t0)
 
     # Step 3.
@@ -161,8 +170,21 @@ async def discover_claims(
     # is cached and fast; the dependency costs less than a second model call would.
     background = await get_author_background(http, settings, req.author_name, req.author_handle, cache)
 
+    # The post-text search needs nothing from the model, so it rides alongside the discovery
+    # call and costs no wall clock. Stage 1 therefore opens with links already on screen.
+    async def _timed_evidence() -> list[Source]:
+        started = time.perf_counter()
+        found = await gather_evidence(
+            http, settings, None, req.post_text, cache, getattr(analyzer, "offline_evidence", None), req.author_handle
+        )
+        timings.evidence_ms = _ms(started)
+        return found
+
     t0 = time.perf_counter()
-    outcome = await analyzer.discover(req, background, settings.max_claims, prompt_version=prompt_version)
+    outcome, evidence = await asyncio.gather(
+        analyzer.discover(req, background, settings.max_claims, prompt_version=prompt_version),
+        _timed_evidence(),
+    )
     timings.extract_ms = _ms(t0)
     body = outcome.result
 
@@ -182,6 +204,7 @@ async def discover_claims(
         rhetorical_signals=signals,
         speaker_context=body.speaker_context,
         sources=background,
+        evidence=evidence,
         transcript=transcript,
         steps=timings,
         latency_ms=_ms(total_started),
@@ -203,15 +226,17 @@ async def check_one_claim(
     timings = StepTimings()
     claim = req.claim
 
-    # Step 2: evidence for this claim only.
+    # Step 2: evidence for this claim, falling back to the post and then to canned results.
     t0 = time.perf_counter()
-    evidence = await search_claim(http, settings, MainClaim(found=True, text=claim.text, quote=claim.quote), cache)
-    if not evidence:
-        # The fake provider carries canned results so every verdict is reachable with no
-        # BRAVE_API_KEY. Real providers do not define this and stay at "unverifiable".
-        offline = getattr(analyzer, "offline_evidence", None)
-        if offline is not None:
-            evidence = offline(claim, req.author_handle)
+    evidence = await gather_evidence(
+        http,
+        settings,
+        MainClaim(found=True, text=claim.text, quote=claim.quote),
+        req.post_text,
+        cache,
+        getattr(analyzer, "offline_evidence", None),
+        req.author_handle,
+    )
     timings.evidence_ms = _ms(t0)
 
     # Step 3: verdict on that claim.

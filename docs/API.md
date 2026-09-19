@@ -9,7 +9,9 @@ CORS allows origins `chrome-extension://<32 lowercase letters>` and `http(s)://l
 ## What the backend does with one post
 
 1. **Claim extraction.** A model reads the post and returns the single main factual claim, restated as a standalone sentence plus the verbatim words it came from. Opinions, predictions and rhetoric are not claims. A post can legitimately have none.
-2. **Evidence.** The claim text is searched on the web. Skipped when there is no claim.
+2. **Evidence.** The claim text is searched on the web. When there is no claim, or the claim
+   search returns nothing, the post itself is searched instead, so every response carries
+   something to read next. Every endpoint that analyses a post returns this list.
 3. **Analysis.** A second model call checks the claim against that evidence only, names what context is missing, lists rhetorical signals with the words that triggered them, and summarises who the author is from Wikipedia.
 
 Measured live on Nebius `openai/gpt-oss-120b`: 1.4 to 2.7 s end to end.
@@ -88,11 +90,11 @@ Render in this order. It is the reading order the product is designed around.
 | `analysis.main_claim` | First block, headed MAIN CLAIM. Show `text` in quotes. `quote` is the span in the post; highlight it in the post preview if you show one. When `found` is false, show "No checkable factual claim in this post" and skip the claim-check block's verdict styling. |
 | `analysis.claim_check.verdict` | A pill. `supported` green · `partially_supported` amber · `unsupported` red · `unverifiable` grey · `no_factual_claim` grey. Never label the post itself true or false; the verdict is about the claim only. |
 | `analysis.claim_check.explanation` | One or two sentences under the pill. |
-| `analysis.claim_check.sources` | Numbered links. Guaranteed to be a subset of `evidence`; the server drops anything the model invented. Empty list is normal for `unverifiable` and `no_factual_claim`. |
+| `analysis.claim_check.sources` | Numbered links: the entries the verdict actually rests on. Guaranteed to be a subset of `evidence`; the server drops anything the model invented. Empty list is normal for `unverifiable` and `no_factual_claim` — `evidence` can still be non-empty there, and that is the intended split. |
 | `analysis.missing_context` | Headed MISSING CONTEXT. Empty string means nothing material is missing: hide the block. |
 | `analysis.rhetorical_signals[]` | Badges. `name` comes from the canonical list in `backend/prompts/taxonomy.py`; a name starting `Other: ` is uncategorised, render it muted. `evidence` is a verbatim quote from the post: show it under the badge or on hover. Empty list means a plainly informational post; hide the block. |
 | `analysis.speaker_context` | Headed SPEAKER CONTEXT. `name · role` on one line, `background` under it. When `background` is exactly `Unknown author`, show that and hide the `sources` list. |
-| `evidence[]` | Optional "what we checked against" disclosure. |
+| `evidence[]` | Web results related to this post, always shown when the backend has a Brave key. Headed "What we checked against" when `main_claim.found` is true, and "Related finds" when it is false — with no claim there is nothing to check, so these are the post searched as written. Empty only when Brave is unconfigured, the budget is spent, or the search returned nothing: hide the block. |
 | `steps`, `latency_ms`, `model`, `provider`, `cached` | Footer. |
 | `disclaimer` | Footer, always visible. |
 
@@ -168,15 +170,16 @@ Response, abridged:
     }
   ],
   "diff": {
-    "claim_agreement": 1.0,
-    "verdict_agreement": 1.0,
-    "signal_overlap": 0.0,
-    "verdicts": { "nebius:v1": "partially_supported", "nebius:v0": "partially_supported" },
-    "signals": { "nebius:v1": ["Loaded Language"], "nebius:v0": ["Other: emotive appeal / blame"] },
-    "latency_ms": { "nebius:v1": 2493, "nebius:v0": 2155 },
-    "cost_usd": { "nebius:v1": 0.00074, "nebius:v0": 0.0006 }
+    "claim_agreement": null,
+    "verdict_agreement": null,
+    "signal_overlap": null,
+    "verdicts": { "nebius:v1": "partially_supported" },
+    "signals": { "nebius:v1": ["Loaded Language"] },
+    "latency_ms": { "nebius:v1": 2493 },
+    "cost_usd": { "nebius:v1": 0.00074 }
   },
-  "evidence": [],
+  "evidence": [ { "title": "...", "url": "...", "snippet": "...", "provider": "brave" } ],
+  "sources":  [ { "title": "...", "url": "...", "snippet": "...", "provider": "wikipedia" } ],
   "total_latency_ms": 4648,
   "total_cost_usd": 0.00134
 }
@@ -193,8 +196,9 @@ Notes for anyone consuming this:
   quotes, labels outside `backend/prompts/taxonomy.py`, and cited URLs absent from the evidence.
 - The agreement rates are over unordered arm pairs and are `null` when fewer than two arms
   succeeded. `claim_agreement` counts overlapping quoted spans, not string equality.
-- `evidence` at the top level is the first successful arm's evidence, which the other arms
-  shared.
+- `evidence` and `sources` at the top level are the first successful arm's, which the other
+  arms shared via the search cache. Both are present for the same reason as on `/analyze`: the
+  runner should be able to show what every arm was judged against, once, not per arm.
 
 CLI equivalent, no server needed:
 
@@ -214,8 +218,12 @@ The fields split by scope, which is what makes a second claim cheap:
 
 | Scope | Fields | Endpoint |
 | --- | --- | --- |
-| Post | `claims[]`, `rhetorical_signals`, `speaker_context`, `sources` | `/claims` |
+| Post | `claims[]`, `rhetorical_signals`, `speaker_context`, `sources`, `evidence` | `/claims` |
 | Claim | `claim_check`, `missing_context`, `evidence` | `/analyze-claim` |
+
+`evidence` appears on both, at different scopes. Stage 1 searches the post as written, so the
+drawer opens with links already on screen. Stage 2 re-searches for the one claim the reader
+picked, and that narrower list is the one the verdict is allowed to cite.
 
 The author lookup and the signal pass run once, in stage 1. Checking a second claim costs one
 search plus one model call.
@@ -236,7 +244,8 @@ Request: identical to `/analyze`. Query params: `provider`, `prompt_version`, `n
   ],
   "speaker_context": { "name": "Example Account", "role": "", "background": "Unknown author" },
   "sources": [],
-  "steps": { "extract_ms": 640, "evidence_ms": 0, "analyse_ms": 0 },
+  "evidence": [{ "title": "...", "url": "...", "snippet": "...", "provider": "brave" }],
+  "steps": { "extract_ms": 640, "evidence_ms": 310, "analyse_ms": 0 },
   "cached": false, "latency_ms": 680,
   "provider": "fake", "model": "fake-v3", "cost_usd": 0.0,
   "disclaimer": "..."
@@ -246,6 +255,13 @@ Request: identical to `/analyze`. Query params: `provider`, `prompt_version`, `n
 No verdict appears here; nothing has been checked yet. `claims: []` means the post carries no
 checkable factual claim, which is normal for pure rhetoric: render the signals and speaker
 blocks and say so.
+
+`evidence[]` is web results for the post as written, not for any one claim, so head it
+**Related finds** rather than "what we checked against" — nothing has been checked. It costs no
+extra wall clock: the search runs alongside the model call. It arrives even when `claims` is
+empty, which is the point — a pure-rhetoric post should still leave the reader somewhere to go.
+It is empty only when the backend has no Brave key, the budget is spent, or the search returned
+nothing; hide the block then.
 
 `claims` is ordered most central first, capped at `MAX_CLAIMS` (default 4). **Every `quote` is
 guaranteed to be a literal substring of `post_text`**: the server snaps it back onto the exact
@@ -287,6 +303,9 @@ Request is the post plus the chosen claim, exactly as stage 1 returned it. State
 `verdict` keeps four of the five values; **`no_factual_claim` is unreachable here**, because the
 reader already picked a claim. `claim_check.sources` stays a guaranteed subset of `evidence`.
 
+Stage 2 `evidence` replaces stage 1's for the open claim: it is the claim search, falling back
+to the post search when the claim search finds nothing.
+
 Returns `422` when `claim.quote` is not present in `post_text`, or when `claim.text` is blank.
 Without that check a caller could hand the model arbitrary text and have it checked as though
 someone had posted it.
@@ -318,16 +337,22 @@ post itself true or false.
 ### Offline coverage
 
 `ANALYZER_PROVIDER=fake` covers every branch with no keys at all, including the evidence step:
-the fake carries canned web results so all four verdicts are reachable without `BRAVE_API_KEY`.
-A live Brave search always wins when it returns anything.
+the fake carries canned web results so all four verdicts are reachable without `BRAVE_API_KEY`,
+on `/analyze` as well as `/analyze-claim`. Order of preference is claim search, then post
+search, then canned — a live Brave result always wins when there is one.
 
-| Handle | Stage 1 | Stage 2 |
-| --- | --- | --- |
-| `example_migrants` | 2 claims, 1 signal | `c1` partially_supported, `c2` unsupported |
-| `alice_weidel` | 2 claims, 4 signals | `c1` partially_supported, `c2` unverifiable |
-| `destatis` | 1 claim, no signals | `c1` supported |
-| `example_left_mp` | 0 claims, 3 signals | n/a |
-| `troll_account` | 0 claims, 2 signals, unknown author | n/a |
+| Handle | Stage 1 | Stage 2 | `evidence` |
+| --- | --- | --- | --- |
+| `example_migrants` | 2 claims, 1 signal | `c1` partially_supported, `c2` unsupported | 2 |
+| `alice_weidel` | 2 claims, 4 signals | `c1` partially_supported, `c2` unverifiable | 1 |
+| `destatis` | 1 claim, no signals | `c1` supported | 1 |
+| `example_left_mp` | 0 claims, 3 signals | n/a | 2 |
+| `example_centrist` | 0 claims, 2 signals | n/a | 1 |
+| `troll_account` | 0 claims, 2 signals, unknown author | n/a | 0 |
+
+`troll_account` is the one handle that returns an empty `evidence` list, on purpose: build the
+empty state against it. Every other handle carries resources on `/analyze` and `/claims` alike,
+with no keys at all.
 
 Saved payloads: `tests/fixtures/responses_v3/claims_*.json` and `checked_*.json`.
 

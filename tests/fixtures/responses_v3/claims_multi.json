@@ -24,10 +24,24 @@
     "background": "Unknown author"
   },
   "sources": [],
+  "evidence": [
+    {
+      "title": "Migration report 2025 - Federal Office for Migration",
+      "url": "https://www.bamf.example/report-2025",
+      "snippet": "In 2025 Germany registered 351,915 first-time asylum applications, alongside around 1.1 million arrivals under temporary protection.",
+      "provider": "brave"
+    },
+    {
+      "title": "Fact check: how many people came to Germany last year?",
+      "url": "https://www.news.example/factcheck-migration",
+      "snippet": "The 1.2 million figure conflates asylum seekers with Ukrainian refugees and EU free movement.",
+      "provider": "brave"
+    }
+  ],
   "transcript": null,
   "steps": {
     "extract_ms": 640,
-    "evidence_ms": 0,
+    "evidence_ms": 310,
     "analyse_ms": 0
   },
   "cached": false,

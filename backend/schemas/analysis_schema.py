@@ -261,6 +261,10 @@ class ClaimsResponse(BaseModel):
     rhetorical_signals: list[Signal] = Field(default_factory=list)
     speaker_context: SpeakerContext
     sources: list[Source] = Field(default_factory=list, description="Author background sources")
+    evidence: list[Source] = Field(
+        default_factory=list,
+        description="Web results related to this post. Stage 1 searches the post itself; picking a claim re-searches for that claim.",
+    )
     transcript: Transcript | None = None
     steps: StepTimings = Field(default_factory=StepTimings)
     cached: bool = False
@@ -358,6 +362,7 @@ class CompareResponse(BaseModel):
     arms: list[VariantArm]
     diff: CompareDiff = Field(default_factory=CompareDiff)
     evidence: list[Source] = Field(default_factory=list, description="Evidence of the first successful arm; shared by later arms via the search cache")
+    sources: list[Source] = Field(default_factory=list, description="Author background of the first successful arm; shared by later arms via the search cache")
     total_latency_ms: int = 0
     total_cost_usd: float | None = None
     disclaimer: str = (

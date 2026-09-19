@@ -152,6 +152,7 @@ async def run_compare(
         arms=arms,
         diff=build_diff(arms),
         evidence=first_ok.evidence if first_ok else [],
+        sources=first_ok.sources if first_ok else [],
         total_latency_ms=int((time.perf_counter() - started) * 1000),
         total_cost_usd=sum(costs) if costs else None,
     )

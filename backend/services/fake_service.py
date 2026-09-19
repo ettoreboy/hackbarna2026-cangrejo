@@ -171,6 +171,30 @@ _EVIDENCE: dict[str, list[Source]] = {
             provider="brave",
         ),
     ],
+    # Posts with nothing checkable still get related reading, so the panel is never blank in
+    # the demo. troll_account is deliberately absent: it is the empty-state fixture.
+    "example_left_mp": [
+        Source(
+            title="What the evidence says about rent control",
+            url="https://www.econ.example/rent-control-evidence",
+            snippet="Reviews find rent caps protect sitting tenants in the short run while reducing rental supply over time.",
+            provider="brave",
+        ),
+        Source(
+            title="City housing market report 2026",
+            url="https://www.cityhousing.example/report-2026",
+            snippet="Median rents rose 7% year on year; the report attributes most of the rise to a shortfall in new construction.",
+            provider="brave",
+        ),
+    ],
+    "example_centrist": [
+        Source(
+            title="Affective polarisation across Europe, 2010-2026",
+            url="https://www.polisci.example/affective-polarisation",
+            snippet="Cross-national surveys find hostility between partisan camps has grown faster than the gap in their stated policy preferences.",
+            provider="brave",
+        ),
+    ],
 }
 
 
@@ -228,10 +252,11 @@ class FakeAnalyzer:
 
     # ------------------------------------------------------------------ two-stage
 
-    def offline_evidence(self, claim: ClaimCandidate, handle: str) -> list[Source]:
+    def offline_evidence(self, claim: ClaimCandidate | MainClaim | None, handle: str) -> list[Source]:
         """Canned results so every verdict is reachable without a BRAVE_API_KEY.
 
-        The pipeline only calls this when the real search came back empty.
+        The pipeline only calls this when both the claim search and the post search came back
+        empty. `claim` is unused: the canned set is keyed on the author.
         """
         return _EVIDENCE.get(handle.lower(), [])
 
