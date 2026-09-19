@@ -41,7 +41,7 @@ any change to either side (rule 3 above).
 
 ## Providers
 
-`ANALYZER_PROVIDER` = `nebius` (default, Token Factory, Qwen3-235B) | `gemini` (baseline) | `fake` (deterministic, offline). Per-request override: `?provider=`. Prompt versions: `?prompt_version=v0` (spec prompt, the "before") or `v1` (guarded, default).
+`ANALYZER_PROVIDER` = `nebius` (default, Token Factory, `openai/gpt-oss-120b`) | `gemini` (baseline, **no key set — every gemini arm fails**) | `fake` (deterministic, offline). Per-request override: `?provider=`. Prompt versions: `?prompt_version=v0` (spec prompt, the "before") or `v1` (guarded, default).
 
 Validate the key and the whole pipeline in one command. Run it after any prompt change:
 
@@ -53,13 +53,22 @@ Validate the key and the whole pipeline in one command. Run it after any prompt 
 
 It prints the five blocks the client renders, per-step latency and cost, and warns when a quote is not verbatim, a label is outside the taxonomy, or a cited URL was not in the evidence.
 
-To compare two arms — provider against provider, or prompt against prompt — on one post:
+To compare two arms on one post. An arm is `provider[/model][:prompt_version]`:
 
 ```bash
-.venv/bin/python scripts/compare.py --post spec_example --variants nebius:v1,gemini:v1
-.venv/bin/python scripts/compare.py --post weidel_immigration --variants nebius:v1,nebius:v0
+make compare-models                  # two Nebius models, prompt v1 — the working comparison
+make compare                         # prompt v1 vs v0, one model
+.venv/bin/python scripts/compare.py --post spec_example \
+  --variants nebius/openai/gpt-oss-120b:v1,nebius/Qwen/Qwen3-235B-A22B-Instruct-2507:v1
 ANALYZER_PROVIDER=fake .venv/bin/python scripts/compare.py --post spec_example --variants fake:v0,fake:v1
 ```
+
+**Compare models, not providers.** `GEMINI_API_KEY` is empty, so provider-against-provider
+cannot run. One Nebius key reaches the whole catalogue (`make models`), and holding the
+provider fixed is the fairer test anyway: same endpoint, same auth, same strict-JSON handling,
+only the weights change. `model` exists only on `Variant` — the model is internal
+configuration, so `/analyze`, `/claims` and `/analyze-claim` take no model parameter and the
+extension never sends one.
 
 Arms run **sequentially on purpose**: the Brave cache is keyed on the claim text, so parallel
 arms would both miss it and spend two live searches. In order, arm 2 onward reuses arm 1's

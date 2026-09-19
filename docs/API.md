@@ -127,8 +127,23 @@ The extension does not need this endpoint; it exists for the evaluation story.
 
 Query params: `nocache=true`.
 
-Request is an `/analyze` request plus `variants`. `label` is optional and defaults to
-`provider:prompt_version`.
+Request is an `/analyze` request plus `variants`. A variant is:
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `provider` | yes | `nebius` \| `gemini` \| `fake` |
+| `model` | no | A model id for that provider. Empty means the provider's configured default. |
+| `prompt_version` | no | `v0` or `v1`, default `v1` |
+| `label` | no | Display name. Defaults to `provider:prompt_version`, or to `<short model>:<version>` when `model` is set. |
+
+**`model` is the only place in the API where a model can be chosen.** The model is internal
+configuration everywhere else: `/analyze`, `/claims` and `/analyze-claim` take no model
+parameter, and the extension never sends one. Adding `model` is an additive optional field, so
+`schema_version` stays `"3"`.
+
+Naming a model is how two models of one provider are compared, which is the comparison worth
+running: holding the provider fixed isolates the weights from the endpoint, the auth and the
+JSON handling.
 
 ```json
 {
@@ -136,11 +151,14 @@ Request is an `/analyze` request plus `variants`. `label` is optional and defaul
   "author_name": "Example Account",
   "post_text": "Germany accepted 1.2M migrants last year. This government clearly doesn't care about German citizens.",
   "variants": [
-    { "provider": "nebius", "prompt_version": "v1" },
-    { "provider": "gemini", "prompt_version": "v1" }
+    { "provider": "nebius", "model": "openai/gpt-oss-120b", "prompt_version": "v1" },
+    { "provider": "nebius", "model": "Qwen/Qwen3-235B-A22B-Instruct-2507", "prompt_version": "v1" }
   ]
 }
 ```
+
+Two variants that resolve to the same label are a `400`: every entry in `diff` is keyed on the
+label, so duplicates would overwrite each other. Give one an explicit `label`.
 
 Response, abridged:
 
@@ -151,7 +169,7 @@ Response, abridged:
   "author_handle": "example_migrants",
   "arms": [
     {
-      "label": "nebius:v1",
+      "label": "gpt-oss-120b:v1",
       "provider": "nebius",
       "prompt_version": "v1",
       "model": "openai/gpt-oss-120b",
@@ -160,12 +178,12 @@ Response, abridged:
       "warnings": []
     },
     {
-      "label": "gemini:v1",
-      "provider": "gemini",
+      "label": "Qwen3-235B-A22B-Instruct-2507:v1",
+      "provider": "nebius",
       "prompt_version": "v1",
-      "model": "gemini-2.5-flash",
+      "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
       "response": null,
-      "error": "Gemini timed out after 20s",
+      "error": "Nebius timed out after 30s",
       "warnings": []
     }
   ],
@@ -200,10 +218,13 @@ Notes for anyone consuming this:
   arms shared via the search cache. Both are present for the same reason as on `/analyze`: the
   runner should be able to show what every arm was judged against, once, not per arm.
 
-CLI equivalent, no server needed:
+CLI equivalent, no server needed. An arm there is `provider[/model][:prompt_version]`:
 
 ```bash
-.venv/bin/python scripts/compare.py --post spec_example --variants nebius:v1,gemini:v1
+make compare-models                       # two Nebius models, prompt v1
+make compare                              # prompt v1 vs v0, one model
+.venv/bin/python scripts/compare.py --post spec_example \
+  --variants nebius/openai/gpt-oss-120b:v1,nebius/Qwen/Qwen3-235B-A22B-Instruct-2507:v1
 ```
 
 ## Two-stage claim picker
