@@ -19,6 +19,7 @@ from backend.schemas.analysis_schema import SCHEMA_VERSION, AnalyzeResponse
 from backend.services.analyzer_base import AnalysisError, Analyzer
 from backend.services.cache import TTLCache
 from backend.services.fake_service import FakeAnalyzer
+from backend.services.search_cache import NullCache, SearchCache
 
 log = logging.getLogger("contextguard")
 
@@ -55,6 +56,7 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
         app.state.settings = settings
         app.state.http = httpx.AsyncClient(follow_redirects=True)
         app.state.cache = TTLCache[AnalyzeResponse](ttl_seconds=settings.cache_ttl_seconds)
+        app.state.search_cache = SearchCache(settings.search_cache_path) if settings.search_cache_path else NullCache()
         app.state.analyzers = analyzers if analyzers is not None else build_analyzers(settings)
         if settings.analyzer_provider in app.state.analyzers:
             app.state.default_provider = settings.analyzer_provider
@@ -68,6 +70,7 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
             yield
         finally:
             await app.state.http.aclose()
+            app.state.search_cache.close()
 
     app = FastAPI(
         title="ContextGuard Social API",

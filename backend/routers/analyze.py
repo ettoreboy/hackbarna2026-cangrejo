@@ -32,6 +32,8 @@ async def health(request: Request) -> HealthResponse:
         providers=sorted(request.app.state.analyzers),
         default_provider=request.app.state.default_provider or "",
         brave_configured=settings.brave_configured,
+        brave_live_calls=request.app.state.search_cache.live_calls(),
+        brave_budget=settings.brave_budget,
         slng_configured=settings.slng_configured,
     )
 
@@ -52,7 +54,10 @@ async def analyze(
         return hit.model_copy(update={"cached": True, "latency_ms": 0})
 
     try:
-        response = await run_pipeline(req, analyzer, request.app.state.http, request.app.state.settings, prompt_version)
+        response = await run_pipeline(
+            req, analyzer, request.app.state.http, request.app.state.settings, prompt_version,
+            cache=request.app.state.search_cache,
+        )
     except AnalysisError as exc:
         log.warning("analysis failed for @%s via %s: %s", req.author_handle, analyzer.name, exc)
         raise HTTPException(status_code=502, detail=str(exc)) from exc

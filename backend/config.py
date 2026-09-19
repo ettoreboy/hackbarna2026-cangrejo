@@ -26,8 +26,12 @@ class Settings(BaseSettings):
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
     gemini_timeout_seconds: float = Field(default=20.0, alias="GEMINI_TIMEOUT_SECONDS")
 
-    # Evidence and author background
+    # Evidence and author background. Brave is prepaid ($5 per 1 000 requests): every result
+    # is cached on disk and live calls stop at BRAVE_BUDGET.
     brave_api_key: str = Field(default="", alias="BRAVE_API_KEY")
+    brave_budget: int = Field(default=1_500, alias="BRAVE_BUDGET", description="max live Brave calls, counted in the cache db")
+    background_brave_fallback: bool = Field(default=False, alias="BACKGROUND_BRAVE_FALLBACK", description="use Brave for unknown authors")
+    search_cache_path: str = Field(default=".cache/brave.sqlite", alias="SEARCH_CACHE_PATH", description="empty = in-memory")
     evidence_result_count: int = Field(default=5, alias="EVIDENCE_RESULT_COUNT")
     search_result_count: int = Field(default=3, alias="SEARCH_RESULT_COUNT")
     wikipedia_lang: str = Field(default="en", alias="WIKIPEDIA_LANG")

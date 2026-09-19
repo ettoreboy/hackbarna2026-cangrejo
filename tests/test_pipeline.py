@@ -121,3 +121,32 @@ def test_prompts_wrap_post_and_v0_has_no_rules():
 )
 def test_taxonomy_normalises_labels(raw, expected):
     assert normalize_label(raw) == expected
+
+
+# --------------------------------------------------------------------------- brave cache + budget
+
+
+@respx.mock
+async def test_brave_cache_hit_skips_the_network_and_budget_stops_live_calls():
+    import httpx as _httpx
+
+    from backend.schemas.analysis_schema import MainClaim as _Claim
+    from backend.services.evidence_service import search_claim
+    from backend.services.search_cache import NullCache
+    from tests.conftest import make_settings
+
+    cache = NullCache()
+    settings = make_settings(BRAVE_API_KEY="brave-test", BRAVE_BUDGET=1)
+    brave = respx.get(BRAVE_SEARCH_URL).mock(return_value=brave_ok(("T", "https://e.example/1", "snippet")))
+    claim = _Claim(found=True, text="Germany accepted 1.2 million migrants last year.", quote="x")
+
+    async with _httpx.AsyncClient() as http:
+        first = await search_claim(http, settings, claim, cache)
+        second = await search_claim(http, settings, claim, cache)  # same claim, different spacing/case
+        second_again = await search_claim(http, settings, _Claim(found=True, text="  germany accepted 1.2 MILLION migrants last year. ", quote="x"), cache)
+        other = await search_claim(http, settings, _Claim(found=True, text="A different claim.", quote="x"), cache)
+
+    assert first and second == first and second_again == first
+    assert brave.call_count == 1, "cache hit must not touch the network"
+    assert cache.live_calls() == 1
+    assert other == [], "budget of 1 live call reached: degrade to no evidence"

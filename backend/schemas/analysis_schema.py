@@ -173,4 +173,6 @@ class HealthResponse(BaseModel):
     providers: list[str]
     default_provider: str
     brave_configured: bool
+    brave_live_calls: int = 0
+    brave_budget: int = 0
     slng_configured: bool

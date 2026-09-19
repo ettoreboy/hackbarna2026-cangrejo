@@ -25,6 +25,7 @@ def make_settings(**overrides: Any) -> Settings:
         "NEBIUS_API_KEY": "",
         "BRAVE_API_KEY": "",
         "CACHE_TTL_SECONDS": 3600,
+        "SEARCH_CACHE_PATH": "",
     }
     base.update(overrides)
     return Settings(_env_file=None, **base)  # type: ignore[call-arg]

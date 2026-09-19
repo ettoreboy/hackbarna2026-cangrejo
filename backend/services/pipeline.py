@@ -26,6 +26,7 @@ from backend.schemas.analysis_schema import (
 from backend.services.analyzer_base import Analyzer
 from backend.services.background_service import get_author_background
 from backend.services.evidence_service import search_claim
+from backend.services.search_cache import SearchCache
 
 
 def _ms(started: float) -> int:
@@ -53,6 +54,7 @@ async def run_pipeline(
     settings: Settings,
     prompt_version: str = "v1",
     transcript: Transcript | None = None,
+    cache: SearchCache | None = None,
 ) -> AnalyzeResponse:
     total_started = time.perf_counter()
     timings = StepTimings()
@@ -61,14 +63,14 @@ async def run_pipeline(
     t0 = time.perf_counter()
     claim_outcome, background = await asyncio.gather(
         analyzer.extract_claim(req),
-        get_author_background(http, settings, req.author_name, req.author_handle),
+        get_author_background(http, settings, req.author_name, req.author_handle, cache),
     )
     timings.extract_ms = _ms(t0)
     claim = claim_outcome.result
 
     # Step 2.
     t0 = time.perf_counter()
-    evidence = await search_claim(http, settings, claim)
+    evidence = await search_claim(http, settings, claim, cache)
     timings.evidence_ms = _ms(t0)
 
     # Step 3.
