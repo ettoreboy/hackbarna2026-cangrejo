@@ -82,7 +82,8 @@ async def main() -> int:
     ap.add_argument("--model", default="Qwen/Qwen3-30B-A3B-Instruct-2507")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--lora-r", type=int, default=16)
-    ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--batch-size", type=int, default=16,
+                    help="Nebius requires batch_size * 8192 >= 131072, so 16 is the minimum")
     ap.add_argument("--learning-rate", type=float, default=1e-4)
     ap.add_argument("--suffix", default="contextguard-v3")
     ap.add_argument("--poll", type=int, default=60, help="seconds between status checks")

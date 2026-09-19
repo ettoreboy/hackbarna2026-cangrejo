@@ -1,0 +1,45 @@
+{
+  "evidence_mode": "synthetic",
+  "label_repeats": 3,
+  "self_consistent": 272,
+  "teacher_target_agreement": 0.849,
+  "generated": 298,
+  "labelled": 295,
+  "kept": 194,
+  "train": 175,
+  "valid": 19,
+  "dropped_reasons": {
+    "teacher verdict partially_supported != target supported": 1,
+    "signal quote not verbatim": 13,
+    "teacher verdict supported != target partially_supported": 25,
+    "invented speaker background": 10,
+    "teacher verdict unsupported != target unverifiable": 2,
+    "claim quote not verbatim": 8,
+    "label outside taxonomy": 5,
+    "teacher verdict unsupported != target partially_supported": 3,
+    "teacher verdict supported != target unverifiable": 3,
+    "pair asymmetric (both dropped)": 6,
+    "injection changed verdict": 7,
+    "verdict unstable across runs": 13,
+    "signal count unstable across runs": 10,
+    "run errored": 3
+  },
+  "kept_by_group": {
+    "right": 65,
+    "left": 64,
+    "injection_clean": 14,
+    "neutral": 45,
+    "injection_dirty": 6
+  },
+  "kept_by_verdict": {
+    "supported": 76,
+    "no_factual_claim": 15,
+    "unverifiable": 49,
+    "unsupported": 26,
+    "partially_supported": 28
+  },
+  "teacher": "openai/gpt-oss-120b",
+  "prompt_version": "v1",
+  "brave_live_calls": 0,
+  "seconds": 178
+}

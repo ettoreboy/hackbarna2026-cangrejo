@@ -256,28 +256,41 @@ async def label(
     cache: SearchCache,
     concurrency: int,
     plan: dict[str, str] | None = None,
+    fixed: dict[str, tuple[MainClaim, list[Source], list[Source]]] | None = None,
 ) -> list[Labeled]:
     """Label every post with the v1 pipeline. `plan` maps item id -> target verdict; those
-    items get synthetic evidence engineered for that verdict instead of a web search."""
+    items get synthetic evidence engineered for that verdict instead of a web search.
+
+    `fixed` pins the step-1 claim, the evidence and the background per item. Synthetic evidence
+    is written at temperature 0.8, so without pinning a repeat run would see different sources
+    and the repeats would measure evidence variance instead of analyser variance. The first run
+    fills it; later runs reuse it and vary only step 3, which is the step being distilled.
+    """
     sem = asyncio.Semaphore(concurrency)
     plan = plan or {}
 
     async def one(item: EvalItem, http: httpx.AsyncClient) -> Labeled:
         req = AnalyzeRequest(**item.to_request())
         target = plan.get(item.id, "")
+        pinned = (fixed or {}).get(item.id)
         async with sem:
             try:
-                claim_out, background = await asyncio.gather(
-                    analyzer.extract_claim(req),
-                    get_author_background(http, settings, req.author_name, req.author_handle, cache),
-                )
-                claim = claim_out.result
-                if not claim.found:
-                    evidence: list[Source] = []
-                elif target and target != "unverifiable_no_evidence":
-                    evidence = await synth_evidence(analyzer, item.post_text, claim.text, target)
+                if pinned is not None:
+                    claim, evidence, background = pinned
                 else:
-                    evidence = await search_claim(http, settings, claim, cache)
+                    claim_out, background = await asyncio.gather(
+                        analyzer.extract_claim(req),
+                        get_author_background(http, settings, req.author_name, req.author_handle, cache),
+                    )
+                    claim = claim_out.result
+                    if not claim.found:
+                        evidence = []
+                    elif target and target != "unverifiable_no_evidence":
+                        evidence = await synth_evidence(analyzer, item.post_text, claim.text, target)
+                    else:
+                        evidence = await search_claim(http, settings, claim, cache)
+                    if fixed is not None:
+                        fixed[item.id] = (claim, evidence, background)
                 body_out = await analyzer.analyse(req, claim, evidence, background, prompt_version="v1")
             except AnalysisError as exc:
                 return Labeled(item=item, claim=MainClaim(found=False, text="", quote=""), evidence=[], background=[],
@@ -386,6 +399,39 @@ def filter_labeled(labeled: list[Labeled]) -> tuple[list[Labeled], dict[str, int
     return list(kept_by_id.values()), reasons
 
 
+def self_consistent(runs: list[list[Labeled]]) -> tuple[list[Labeled], dict[str, int]]:
+    """Keep only posts where every labelling run agreed with the others.
+
+    Verdicts are not reproducible on this model (86% agreement at temperature 0, section 3 of
+    docs/EVAL.md). Distilling a teacher that flips one answer in seven teaches the student that
+    noise. Labelling three times and dropping the disagreements costs 3x the teacher calls and
+    removes the part of the signal that is not real.
+    """
+    base = runs[0]
+    if len(runs) == 1:
+        return base, {}
+    dropped: dict[str, int] = {}
+    by_id: list[dict[str, Labeled]] = [{l.item.id: l for l in r} for r in runs]
+    kept = []
+    for lab in base:
+        others = [d.get(lab.item.id) for d in by_id[1:]]
+        if any(o is None or o.error for o in others) or lab.error:
+            dropped["run errored"] = dropped.get("run errored", 0) + 1
+            continue
+        if len({o.body.claim_check.verdict for o in others} | {lab.body.claim_check.verdict}) > 1:
+            dropped["verdict unstable across runs"] = dropped.get("verdict unstable across runs", 0) + 1
+            continue
+        if len({o.claim.found for o in others} | {lab.claim.found}) > 1:
+            dropped["claim-found unstable across runs"] = dropped.get("claim-found unstable across runs", 0) + 1
+            continue
+        counts = {len(o.body.rhetorical_signals) for o in others} | {len(lab.body.rhetorical_signals)}
+        if max(counts) - min(counts) > 1:
+            dropped["signal count unstable across runs"] = dropped.get("signal count unstable across runs", 0) + 1
+            continue
+        kept.append(lab)
+    return kept, dropped
+
+
 # --------------------------------------------------------------------------- stage 4
 
 
@@ -424,6 +470,8 @@ async def main() -> int:
     ap.add_argument("--injection", type=int, default=20)
     ap.add_argument("--seed", type=int, default=2026)
     ap.add_argument("--concurrency", type=int, default=6)
+    ap.add_argument("--repeats", type=int, default=3,
+                    help="label each post N times and keep only posts the teacher agrees with itself on")
     ap.add_argument("--valid-share", type=float, default=0.1)
     ap.add_argument("--evidence", default="synthetic", choices=["synthetic", "brave"],
                     help="synthetic: build evidence for a target verdict (verdict diversity, no Brave spend)")
@@ -466,13 +514,26 @@ async def main() -> int:
             else:
                 plan[it.id] = mix[idx % len(mix)]
 
-    print(f"[2/4] label with the v1 pipeline (teacher {analyzer.model}, evidence {args.evidence})")
-    labeled = await label(analyzer, items, settings, cache, args.concurrency, plan)
+    print(f"[2/4] label with the v1 pipeline (teacher {analyzer.model}, evidence {args.evidence}, {args.repeats}x)")
+    runs: list[list[Labeled]] = []
+    fixed: dict[str, tuple[MainClaim, list[Source], list[Source]]] = {}
+    for r in range(args.repeats):
+        runs.append(await label(analyzer, items, settings, cache, args.concurrency, plan, fixed))
+        errs = sum(1 for l in runs[-1] if l.error)
+        print(f"      run {r + 1}/{args.repeats}: {len(runs[-1]) - errs} labelled, {errs} errors", flush=True)
+    labeled = runs[0]
     errors = sum(1 for l in labeled if l.error)
-    print(f"      {len(labeled) - errors} labelled, {errors} errors, brave live calls {cache.live_calls() - brave_before}")
+    print(f"      brave live calls {cache.live_calls() - brave_before}")
+
+    stable, unstable_reasons = self_consistent(runs)
+    if args.repeats > 1:
+        print(f"      self-consistent across {args.repeats} runs: {len(stable)} / {len(labeled)}")
+        for k, v in sorted(unstable_reasons.items(), key=lambda kv: -kv[1]):
+            print(f"        - {k}: {v}")
 
     print("[3/4] filter")
-    kept, reasons = filter_labeled(labeled)
+    kept, reasons = filter_labeled(stable)
+    reasons.update(unstable_reasons)
     print(f"      kept {len(kept)} / {len(labeled)}")
     for k, v in sorted(reasons.items(), key=lambda kv: -kv[1]):
         print(f"        - {k}: {v}")
@@ -498,6 +559,8 @@ async def main() -> int:
     planned = sum(1 for l in labeled if l.target_verdict and not l.error and l.claim.found)
     report = {
         "evidence_mode": args.evidence,
+        "label_repeats": args.repeats,
+        "self_consistent": len(stable),
         "teacher_target_agreement": round(agreed / planned, 3) if planned else None,
         "generated": len(items), "labelled": len(labeled) - errors, "kept": len(kept),
         "train": len(train), "valid": len(valid), "dropped_reasons": reasons,
@@ -510,7 +573,7 @@ async def main() -> int:
     if planned:
         print(f"      teacher agreed with the target verdict on {agreed}/{planned} ({agreed / planned:.0%})")
     print(f"      train {len(train)} · valid {len(valid)} · by group {groups} · by verdict {verdicts}")
-    print(f"      review sample: {out_dir.relative_to(ROOT)}/ft_review.md")
+    print(f"      review sample: {out_dir}/ft_review.md")
     print(f"      {report['seconds']} s, {report['brave_live_calls']} live Brave calls (total spent {cache.live_calls()})")
     cache.close()
     return 0

@@ -1,0 +1,102 @@
+{
+  "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+  "hyperparameters": {
+    "lora": true,
+    "lora_r": 16,
+    "n_epochs": 3,
+    "batch_size": 16,
+    "learning_rate": 0.0001
+  },
+  "train_examples": 175,
+  "valid_examples": 19,
+  "started": 1789822918.4229782,
+  "training_file": "file-01a0b9c2-620b-7cbd-9b42-6596e4ca7dcc",
+  "validation_file": "file-01a0b9c2-62e5-7e24-b73d-47a0098eedc0",
+  "job_id": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96",
+  "job": {
+    "id": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96",
+    "created_at": 1789822919,
+    "error": null,
+    "fine_tuned_model": null,
+    "finished_at": null,
+    "hyperparameters": {
+      "batch_size": 16,
+      "learning_rate_multiplier": null,
+      "n_epochs": 3,
+      "learning_rate": 0.0001,
+      "warmup_ratio": 0.0,
+      "weight_decay": 0.0,
+      "packing": true,
+      "max_grad_norm": 1.0,
+      "context_length": 8192,
+      "lora": true,
+      "lora_r": 16,
+      "lora_alpha": 8,
+      "lora_dropout": 0.0
+    },
+    "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+    "object": "fine_tuning.job",
+    "organization_id": "",
+    "result_files": [],
+    "seed": 0,
+    "status": "running",
+    "trained_tokens": 0,
+    "training_file": "file-01a0b9c2-620b-7cbd-9b42-6596e4ca7dcc",
+    "validation_file": "file-01a0b9c2-62e5-7e24-b73d-47a0098eedc0",
+    "estimated_finish": null,
+    "integrations": null,
+    "metadata": null,
+    "method": {
+      "type": "supervised",
+      "dpo": null,
+      "reinforcement": null,
+      "supervised": {
+        "hyperparameters": {
+          "batch_size": 16,
+          "learning_rate_multiplier": null,
+          "n_epochs": 3,
+          "learning_rate": 0.0001,
+          "warmup_ratio": 0.0,
+          "weight_decay": 0.0,
+          "packing": true,
+          "max_grad_norm": 1.0,
+          "context_length": 8192,
+          "lora": true,
+          "lora_r": 16,
+          "lora_alpha": 8,
+          "lora_dropout": 0.0
+        }
+      }
+    },
+    "from_checkpoint": null,
+    "suffix": "contextguard-v3",
+    "trained_steps": 0,
+    "total_steps": null,
+    "benchmark_mode": false,
+    "profile_mode": true
+  },
+  "events": [
+    {
+      "id": "c1257636-19dc-4661-baf3-acfcdcaf6af1",
+      "created_at": 1789822921,
+      "level": "info",
+      "message": "Job is submitted",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "api",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    },
+    {
+      "id": "2ccbf2e6-e63d-4730-9b88-b937a4821174",
+      "created_at": 1789822964,
+      "level": "info",
+      "message": "Dataset 'training' processed successfully",
+      "object": "fine_tuning.job.event",
+      "data": null,
+      "type": null,
+      "source": "datasets",
+      "job_uuid": "ftjob-ee08fbbeb0f64b218b96d1e3621cdb96"
+    }
+  ]
+}
