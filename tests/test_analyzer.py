@@ -339,3 +339,28 @@ async def test_live_latency():
     print(body["analysis"])
     if elapsed_ms > 1500:
         warnings.warn(f"Latency {elapsed_ms:.0f} ms exceeds the 1.5 s spec target (see docs/ANALYSIS.md)", stacklevel=1)
+
+
+# --------------------------------------------------------------------------- regressions
+
+
+def test_wikipedia_user_agent_carries_contact_details():
+    """Wikimedia's robot policy returns 403 for a User-Agent with no contact URL or address.
+
+    Regression: the original UA string was rejected and author background silently degraded
+    to empty on every request.
+    """
+    from backend.services.background_service import USER_AGENT
+
+    assert "http" in USER_AGENT and "@" in USER_AGENT, USER_AGENT
+
+
+@pytest.mark.live
+async def test_wikipedia_live_summary_returns_200():
+    """Opt-in: proves the real Wikipedia endpoint accepts our User-Agent."""
+    from backend.config import Settings
+    from backend.services.background_service import wikipedia_summary
+
+    async with httpx.AsyncClient(follow_redirects=True) as c:
+        src = await wikipedia_summary(c, "Alice Weidel", Settings(_env_file=None).wikipedia_lang)  # type: ignore[call-arg]
+    assert src is not None and "politician" in src.snippet.lower()
