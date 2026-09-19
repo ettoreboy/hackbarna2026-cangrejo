@@ -35,6 +35,16 @@ class Analyzer(Protocol):
     name: str
     model: str
 
+    def with_model(self, model: str) -> "Analyzer":
+        """Return an analyzer identical to this one but running `model`.
+
+        Used by /compare to put two models of one provider side by side. It lives on the
+        provider because only the provider knows which of its settings name a model, and it
+        should share the underlying HTTP client rather than open a second connection pool.
+        Returning `self` for an empty or unchanged model is the expected no-op.
+        """
+        ...
+
     # -- one-shot pipeline (/analyze) ---------------------------------------
 
     async def extract_claim(self, req: AnalyzeRequest) -> StepOutcome[MainClaim]: ...

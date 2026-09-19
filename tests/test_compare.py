@@ -8,11 +8,12 @@ import pytest_asyncio
 import respx
 
 from backend.main import create_app
-from backend.schemas.analysis_schema import AnalyzeRequest, MainClaim, Source
+from backend.schemas.analysis_schema import AnalyzeRequest, MainClaim, Source, Variant
 from backend.services.analyzer_base import AnalysisError, StepOutcome
 from backend.services.background_service import BRAVE_SEARCH_URL
 from backend.services.compare import _jaccard, _same_claim
 from backend.services.fake_service import FakeAnalyzer
+from scripts.compare import parse_variant
 from tests.conftest import FIXTURES, WIKI_RE, _client_for, brave_ok, make_settings, wiki_ok
 
 
@@ -174,3 +175,80 @@ async def test_compare_carries_evidence_and_author_background(compare_client):
     assert [s["provider"] for s in out["sources"]] == ["wikipedia"]
     # The top-level lists are the first successful arm's, shared by the rest via the cache.
     assert out["sources"] == out["arms"][0]["response"]["sources"]
+
+
+# --------------------------------------------------------------------------- model arms
+
+
+@pytest.mark.parametrize(
+    "spec,provider,model,version",
+    [
+        ("nebius:v1", "nebius", "", "v1"),
+        ("nebius", "nebius", "", "v1"),
+        ("fake:v0", "fake", "", "v0"),
+        ("nebius/openai/gpt-oss-120b:v1", "nebius", "openai/gpt-oss-120b", "v1"),
+        ("nebius/Qwen/Qwen3-235B-A22B-Instruct-2507", "nebius", "Qwen/Qwen3-235B-A22B-Instruct-2507", "v1"),
+        # A fine-tune id is full of colons. Only a trailing v0/v1 may be read as the version.
+        ("nebius/ft:Qwen:org:cg-v3:ckpt-9", "nebius", "ft:Qwen:org:cg-v3:ckpt-9", "v1"),
+    ],
+)
+def test_parse_variant(spec, provider, model, version):
+    v = parse_variant(spec)
+    assert (v.provider, v.model, v.prompt_version) == (provider, model, version)
+
+
+def test_parse_variant_rejects_a_missing_provider():
+    with pytest.raises(SystemExit):
+        parse_variant("/openai/gpt-oss-120b:v1")
+
+
+def test_a_named_model_labels_by_model_a_bare_provider_by_provider():
+    """The provider is what a model comparison holds fixed, so the model is what names the arm."""
+    assert Variant(provider="nebius").resolved_label() == "nebius:v1"
+    assert Variant(provider="nebius", model="openai/gpt-oss-120b").resolved_label() == "gpt-oss-120b:v1"
+    assert Variant(provider="nebius", model="openai/gpt-oss-120b", label="A").resolved_label() == "A"
+
+
+@respx.mock
+async def test_two_models_of_one_provider_are_two_arms(compare_client):
+    respx.get(url__regex=WIKI_RE).mock(return_value=httpx.Response(404))
+    respx.get(BRAVE_SEARCH_URL).mock(return_value=brave_ok(("BAMF 2025", "https://bamf.example/2025", "…")))
+
+    res = await compare_client.post(
+        "/api/v1/compare",
+        json=_body("spec_example", {"provider": "fake", "model": "model-a"}, {"provider": "fake", "model": "model-b"}),
+    )
+    assert res.status_code == 200, res.text
+    arms = res.json()["arms"]
+    assert [a["label"] for a in arms] == ["model-a:v1", "model-b:v1"]
+    assert [a["model"] for a in arms] == ["model-a", "model-b"]
+    assert all(a["response"]["model"] == a["model"] for a in arms)
+
+
+@respx.mock
+async def test_two_models_do_not_share_a_cache_entry(compare_client):
+    """The response cache keys on the analyzer's model, so one arm must not serve the other."""
+    respx.get(url__regex=WIKI_RE).mock(return_value=httpx.Response(404))
+    respx.get(BRAVE_SEARCH_URL).mock(return_value=brave_ok(("BAMF 2025", "https://bamf.example/2025", "…")))
+
+    body = _body("spec_example", {"provider": "fake", "model": "model-a"}, {"provider": "fake", "model": "model-b"})
+    first = await compare_client.post("/api/v1/compare", json=body)
+    assert first.status_code == 200, first.text
+    assert [a["response"]["cached"] for a in first.json()["arms"]] == [False, False]
+
+    # Second run: each arm hits its own entry, and still reports its own model.
+    second = await compare_client.post("/api/v1/compare", json=body)
+    assert second.status_code == 200, second.text
+    arms = second.json()["arms"]
+    assert [a["response"]["cached"] for a in arms] == [True, True]
+    assert [a["response"]["model"] for a in arms] == ["model-a", "model-b"]
+
+
+async def test_duplicate_labels_are_a_400(compare_client):
+    """Every diff is keyed on the label, so two identical arms would overwrite each other."""
+    res = await compare_client.post(
+        "/api/v1/compare",
+        json=_body("spec_example", {"provider": "fake", "model": "model-a"}, {"provider": "fake", "model": "model-a"}),
+    )
+    assert res.status_code == 400
+    assert "model-a:v1" in res.json()["detail"]

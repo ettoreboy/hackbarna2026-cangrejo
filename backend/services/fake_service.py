@@ -208,6 +208,18 @@ class FakeAnalyzer:
         self.discover_calls: list[tuple[AnalyzeRequest, list[Source], int, str]] = []
         self.check_calls: list[tuple[AnalyzeRequest, ClaimCandidate, list[Source], str]] = []
 
+    def with_model(self, model: str) -> "FakeAnalyzer":
+        """A twin that only *reports* a different model. Output stays deterministic.
+
+        `model` is a class attribute here, so the copy shadows it on the instance. That is
+        enough for a compare test to tell two arms apart without any network.
+        """
+        if not model or model == self.model:
+            return self
+        twin = FakeAnalyzer()
+        twin.model = model
+        return twin
+
     async def extract_claim(self, req: AnalyzeRequest) -> StepOutcome[MainClaim]:
         self.extract_calls.append(req)
         claim = _CLAIMS.get(req.author_handle.lower(), _default_claim(req))

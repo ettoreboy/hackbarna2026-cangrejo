@@ -1,4 +1,4 @@
-"""Run one post through several provider x prompt_version arms and diff the results.
+"""Run one post through several provider x model x prompt_version arms and diff the results.
 
 Arms run **sequentially, not concurrently**, on purpose. The Brave cache
 (``SearchCache``) is keyed on the normalised claim text, so two arms fired at the same time
@@ -38,6 +38,15 @@ log = logging.getLogger(__name__)
 
 class UnknownProvider(ValueError):
     """A variant named a provider that is not configured."""
+
+
+class DuplicateLabel(ValueError):
+    """Two variants resolved to the same label.
+
+    Every diff in CompareDiff is keyed on the label, so duplicates would silently overwrite
+    one another and the agreement rates would be computed over a short dict. Cheap to hit by
+    naming the same model twice, so it is rejected before anything runs.
+    """
 
 
 def _mean(values: list[float]) -> float | None:
@@ -105,17 +114,36 @@ async def run_compare(
     settings: Settings,
     search_cache: SearchCache | None = None,
     cache: TTLCache[AnalyzeResponse] | None = None,
+    variant_analyzers: dict[tuple[str, str], Analyzer] | None = None,
 ) -> CompareResponse:
-    """One arm per variant, in order. Raises UnknownProvider before running anything."""
+    """One arm per variant, in order. Validates every variant before running anything.
+
+    `variant_analyzers` memoises the per-model analyzers across calls. It matters for Nebius,
+    which remembers per model whether strict json_schema was rejected: rebuilding the analyzer
+    every request would forget that and re-pay the downgrade round trip on each compare.
+    """
     missing = sorted({v.provider for v in variants} - set(analyzers))
     if missing:
         raise UnknownProvider(f"unknown or unconfigured provider(s): {', '.join(missing)}. Available: {sorted(analyzers)}")
+
+    labels = [v.resolved_label() for v in variants]
+    dupes = sorted({x for x in labels if labels.count(x) > 1})
+    if dupes:
+        raise DuplicateLabel(f"two variants resolve to the same label: {', '.join(dupes)}. Give one an explicit label.")
+
+    if variant_analyzers is None:
+        variant_analyzers = {}
 
     started = time.perf_counter()
     arms: list[VariantArm] = []
 
     for variant in variants:
         analyzer = analyzers[variant.provider]
+        if variant.model:
+            key_a = (variant.provider, variant.model)
+            if key_a not in variant_analyzers:
+                variant_analyzers[key_a] = analyzer.with_model(variant.model)
+            analyzer = variant_analyzers[key_a]
         arm = VariantArm(
             label=variant.resolved_label(),
             provider=variant.provider,

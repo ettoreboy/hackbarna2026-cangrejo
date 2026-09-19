@@ -317,12 +317,30 @@ class HealthResponse(BaseModel):
 
 
 class Variant(BaseModel):
+    """One arm of a comparison: a provider, optionally a specific model, and a prompt version.
+
+    ``model`` is how two models on the same provider are put side by side. It is deliberately
+    only on this type: the model is internal configuration and is never selectable from the
+    extension, so /analyze, /claims and /analyze-claim take no model parameter.
+    """
+
     provider: str = Field(..., min_length=1, description="nebius | gemini | fake")
+    model: str = Field(default="", max_length=128, description="Provider model id; empty = the provider's configured default")
     prompt_version: Literal["v0", "v1"] = "v1"
     label: str = Field(default="", max_length=64, description="Display name; defaults to provider:prompt_version")
 
     def resolved_label(self) -> str:
-        return self.label or f"{self.provider}:{self.prompt_version}"
+        """An explicit label, else provider:version, else the short model name and the version.
+
+        Named models label by model rather than by provider, because the provider is the thing
+        held constant in that comparison and repeating it in every column says nothing. The
+        full id stays on ``VariantArm.model``.
+        """
+        if self.label:
+            return self.label
+        if not self.model:
+            return f"{self.provider}:{self.prompt_version}"
+        return f"{self.model.rsplit('/', 1)[-1]}:{self.prompt_version}"
 
 
 class CompareRequest(AnalyzeRequest):

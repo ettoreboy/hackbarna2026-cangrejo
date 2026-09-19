@@ -1,4 +1,4 @@
-"""POST /api/v1/compare: one post, several provider x prompt_version arms, side by side."""
+"""POST /api/v1/compare: one post, several provider x model x prompt_version arms, side by side."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from backend.schemas.analysis_schema import AnalyzeRequest, CompareRequest, CompareResponse
-from backend.services.compare import UnknownProvider, run_compare
+from backend.services.compare import DuplicateLabel, UnknownProvider, run_compare
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["compare"])
@@ -33,8 +33,9 @@ async def compare(
             request.app.state.settings,
             search_cache=request.app.state.search_cache,
             cache=None if nocache else request.app.state.cache,
+            variant_analyzers=request.app.state.variant_analyzers,
         )
-    except UnknownProvider as exc:
+    except (UnknownProvider, DuplicateLabel) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if all(arm.error for arm in result.arms):

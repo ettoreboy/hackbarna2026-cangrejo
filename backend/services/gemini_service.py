@@ -53,6 +53,12 @@ class GeminiAnalyzer:
         self.model = settings.gemini_model
         self.temperature = settings.gemini_temperature
 
+    def with_model(self, model: str) -> "GeminiAnalyzer":
+        """A twin of this analyzer running `model`, sharing the client. See NebiusAnalyzer."""
+        if not model or model == self.model:
+            return self
+        return GeminiAnalyzer(self.settings.model_copy(update={"gemini_model": model}), client=self.client)
+
     async def _structured(self, system: str, user: str, out: type[M], max_tokens: int) -> StepOutcome[M]:
         config = types.GenerateContentConfig(
             system_instruction=system,

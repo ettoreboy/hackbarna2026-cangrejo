@@ -19,6 +19,9 @@ POST     ?= weidel_immigration
 PROVIDER ?= nebius
 MODEL    ?=
 VARIANTS ?= nebius:v1,nebius:v0
+# Two models of one provider. Both are priced in backend/services/pricing.py, so the cost row
+# in the side-by-side is a real number rather than "unpriced".
+MODELS   ?= nebius/openai/gpt-oss-120b:v1,nebius/Qwen/Qwen3-235B-A22B-Instruct-2507:v1
 LIMIT    ?=
 
 MODEL_ARG := $(if $(MODEL),--model $(MODEL),)
@@ -108,8 +111,12 @@ models: ## List the models Token Factory exposes
 	$(PY) scripts/check_nebius.py --list-models
 
 .PHONY: compare
-compare: ## Side-by-side arms on one post (VARIANTS=provider:prompt,...)
+compare: ## Prompt v1 vs v0 on one model (VARIANTS=provider[/model][:prompt],...)
 	$(PY) scripts/compare.py --post $(POST) --variants $(VARIANTS)
+
+.PHONY: compare-models
+compare-models: ## Two Nebius models on one prompt (MODELS=...)
+	$(PY) scripts/compare.py --post $(POST) --variants $(MODELS)
 
 ## ---------------------------------------------------------------- end to end
 

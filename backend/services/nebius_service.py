@@ -81,6 +81,22 @@ class NebiusAnalyzer:
             ClaimVerdict: response_format_strict("claim_verdict", ClaimVerdict.model_json_schema()),
         }
 
+    def with_model(self, model: str) -> "NebiusAnalyzer":
+        """A twin of this analyzer running `model`, for one arm of a /compare.
+
+        Both `nebius_model` and `nebius_fast_model` are overridden, so the arm means "this
+        model did the whole job" rather than "this model did step 3 and whatever
+        NEBIUS_FAST_MODEL says did step 1". A globally configured fast model is therefore
+        ignored inside a model-named arm, on purpose.
+
+        The client is shared: a new AsyncOpenAI would open a second connection pool for the
+        same endpoint and the same key.
+        """
+        if not model or model == self.model:
+            return self
+        settings = self.settings.model_copy(update={"nebius_model": model, "nebius_fast_model": model})
+        return NebiusAnalyzer(settings, client=self.client)
+
     # ------------------------------------------------------------------ transport
 
     async def _create(self, model: str, system: str, user: str, strict_format: dict | None, max_tokens: int):

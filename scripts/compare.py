@@ -1,10 +1,19 @@
 #!/usr/bin/env python
-"""Run one post through several provider x prompt_version arms and print them side by side.
+"""Run one post through several arms and print them side by side.
 
     .venv/bin/python scripts/compare.py --post weidel_immigration
     .venv/bin/python scripts/compare.py --post spec_example --variants nebius:v1,nebius:v0
     .venv/bin/python scripts/compare.py --text "..." --handle someone --name "Some One"
     ANALYZER_PROVIDER=fake .venv/bin/python scripts/compare.py --post spec_example --variants fake:v0,fake:v1
+
+An arm is `provider[/model][:prompt_version]`. Naming the model is how two models of one
+provider are compared, which is the comparison this project can actually run: one Nebius key
+reaches the whole catalogue, and holding the provider fixed isolates the weights from the
+endpoint, the auth and the JSON handling.
+
+    --variants nebius:v1,nebius:v0                      prompts, one model
+    --variants nebius/openai/gpt-oss-120b:v1,\
+               nebius/Qwen/Qwen3-235B-A22B-Instruct-2507:v1    models, one prompt
 
 Arms run in order, not in parallel, so every arm after the first reuses the cached Brave
 evidence: one compare costs one live search, and the arms are judged on the same facts.
@@ -28,20 +37,37 @@ import httpx  # noqa: E402
 from backend.config import Settings  # noqa: E402
 from backend.main import build_analyzers  # noqa: E402
 from backend.schemas.analysis_schema import AnalyzeRequest, CompareResponse, Variant  # noqa: E402
-from backend.services.compare import UnknownProvider, run_compare  # noqa: E402
+from backend.services.compare import DuplicateLabel, UnknownProvider, run_compare  # noqa: E402
 from backend.services.search_cache import NullCache, SearchCache  # noqa: E402
 from scripts._render import BAD, INFO, OK, line, render_analysis  # noqa: E402
 
 FIXTURES = json.loads((ROOT / "tests/fixtures/posts.json").read_text())
-DEFAULT_VARIANTS = "nebius:v1,gemini:v1"
+# gpt-oss-120b against Qwen3-235B: both are in the price table, so the cost row is real, and
+# both are instruct models that answer in the token budget. The old default paired nebius with
+# gemini, which fails outright whenever GEMINI_API_KEY is unset.
+DEFAULT_VARIANTS = "nebius/openai/gpt-oss-120b:v1,nebius/Qwen/Qwen3-235B-A22B-Instruct-2507:v1"
+
+
+def parse_variant(chunk: str) -> Variant:
+    """`provider[/model][:prompt_version]` -> one Variant. A bare provider name means v1.
+
+    The prompt version is split off the right, and only when it literally reads v0 or v1.
+    That is what lets a model id keep its own slashes and colons: `openai/gpt-oss-120b` is a
+    model, and a fine-tune id full of colons stays intact.
+    """
+    spec, version = chunk.strip(), "v1"
+    head, sep, tail = spec.rpartition(":")
+    if sep and tail in ("v0", "v1"):
+        spec, version = head, tail
+    provider, _, model = spec.partition("/")
+    if not provider:
+        raise SystemExit(f"variant {chunk!r} names no provider")
+    return Variant(provider=provider, model=model, prompt_version=version)
 
 
 def parse_variants(spec: str) -> list[Variant]:
-    """'nebius:v1,gemini:v1' -> two Variants. A bare provider name means v1."""
-    out: list[Variant] = []
-    for chunk in (c.strip() for c in spec.split(",") if c.strip()):
-        provider, _, version = chunk.partition(":")
-        out.append(Variant(provider=provider, prompt_version=version or "v1"))
+    """A comma list of variants. At least two, because one arm is not a comparison."""
+    out = [parse_variant(c) for c in spec.split(",") if c.strip()]
     if len(out) < 2:
         raise SystemExit(f"need at least two variants, got {spec!r}")
     return out
@@ -97,7 +123,7 @@ async def main() -> int:
     ap.add_argument("--text", help="arbitrary post text instead of a fixture")
     ap.add_argument("--handle", default="example_account", help="author handle, with --text")
     ap.add_argument("--name", default="Example Account", help="author display name, with --text")
-    ap.add_argument("--variants", default=DEFAULT_VARIANTS, help=f"comma list of provider:prompt_version (default {DEFAULT_VARIANTS})")
+    ap.add_argument("--variants", default=DEFAULT_VARIANTS, help=f"comma list of provider[/model][:prompt_version] (default {DEFAULT_VARIANTS})")
     ap.add_argument("--out", help="write the CompareResponse JSON here; default tests/eval/results/compare_<post>_<ts>.json")
     ap.add_argument("--no-blocks", action="store_true", help="only print the side-by-side table")
     args = ap.parse_args()
@@ -131,7 +157,7 @@ async def main() -> int:
         async with httpx.AsyncClient(follow_redirects=True) as http:
             result = await run_compare(req, variants, analyzers, http, settings, search_cache=search_cache)
         spent = search_cache.live_calls() - before
-    except UnknownProvider as exc:
+    except (UnknownProvider, DuplicateLabel) as exc:
         line(BAD, str(exc))
         return 1
     finally:

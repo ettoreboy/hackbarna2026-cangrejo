@@ -59,6 +59,10 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
         app.state.cache = TTLCache[AnalyzeResponse](ttl_seconds=settings.cache_ttl_seconds)
         app.state.search_cache = SearchCache(settings.search_cache_path) if settings.search_cache_path else NullCache()
         app.state.analyzers = analyzers if analyzers is not None else build_analyzers(settings)
+        # Analyzers bound to a specific model, built on demand by /compare and kept for the
+        # process so a provider's per-model state (Nebius remembers strict-schema downgrades)
+        # survives between requests. Keyed on (provider, model).
+        app.state.variant_analyzers = {}
         if settings.analyzer_provider in app.state.analyzers:
             app.state.default_provider = settings.analyzer_provider
         elif app.state.analyzers:
