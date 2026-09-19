@@ -150,14 +150,22 @@ So there is no API path from a Token Factory fine-tuning checkpoint to a served 
 Serving this adapter would mean merging it into the 30B base, pushing roughly 60 GB to Hugging
 Face and registering that repo. That is not a weekend task.
 
-**This is a question for the Nebius mentors, not a code problem.** `backend/eval/serve_finetune.py`
-is written and correct apart from the artifact id; one answer unblocks it.
+We asked. A Nebius engineer confirmed on 19 September that enabling custom weights needs a
+Solutions Architect and would not happen over the weekend, so this is closed rather than pending.
 
-## Two open risks, stated plainly
+## Where this ended
 
-1. **Serving the result is beta-on-request on Nebius.** A trained adapter that cannot be served
-   cannot be benchmarked against the teacher. Ask the Nebius mentors to enable custom weights.
-2. **The student may be too slow even if served.** `Qwen3-30B-A3B` measured 27 s on the
+**The fine-tune is a measured result, not a shipped component.** Two LoRA jobs trained cleanly,
+v2 beat v1 on validation loss, and the adapter is real. It is not served and nothing in the
+product calls it: every analysis runs on `openai/gpt-oss-120b` through the shared Nebius API.
+
+That is the honest outcome, and it is worth more than a served model nobody benchmarked. What
+the work actually produced: a distillation set built with self-consistency filtering, a
+reproducible four-stage build, a loss curve, and a documented reason not to ship it.
+
+One risk would still apply if serving were ever unblocked:
+
+1. **The student may be too slow even if served.** `Qwen3-30B-A3B` measured 27 s on the
    benchmark post through this pipeline, against 1.4–2.7 s for the teacher. If that holds after
    fine-tuning, the fine-tune is a research result rather than the production path, and
    `openai/gpt-oss-120b` stays the served model.

@@ -3,6 +3,12 @@
 Answering "how do I create an endpoint with my model, and how do I call it?" from the Nebius
 docs, checked against the live API on 19 September 2026.
 
+> **Answered, 19 September 2026.** We asked a Nebius engineer at the event. The reply: enabling
+> custom weights needs a Solutions Architect and is not doable over a weekend. Serving is
+> therefore closed for this hackathon and the fine-tune stands as a measured result, not a served
+> model. Everything below is the route for afterwards, and is written down because it took an
+> afternoon of API probing to establish.
+
 ## The short answer
 
 **Custom weights are beta and gated.** The docs say so outright:

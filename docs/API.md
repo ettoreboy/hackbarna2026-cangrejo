@@ -356,7 +356,12 @@ with no keys at all.
 
 Saved payloads: `tests/fixtures/responses_v3/claims_*.json` and `checked_*.json`.
 
-## `POST /api/v1/analyze-media` (arrives Sunday morning)
+## `POST /api/v1/analyze-media` — NOT BUILT
+
+> **Out of scope.** The SLNG speech-to-text track was dropped so the text path could be
+> finished and measured properly. Nothing below exists: there is no `media_service.py`, no
+> `stt_service.py` and no route. The design is kept because it is a half-day of work and the
+> pipeline needs no change — a transcript is just another `post_text`.
 
 Video posts. The server downloads the audio with yt-dlp, transcribes it with SLNG (Deepgram Nova 3, EU region), then runs the same pipeline on the transcript.
 

@@ -12,6 +12,15 @@ Use the **canonical names** in bold as the labels the model returns. The badge U
 
 ## A. Manipulation tactics
 
+### **Loaded Language**
+Choosing an emotionally charged word where a neutral one would carry the same information. The
+most common technique by a distance: 38% of all signals in the fine-tune set, which is itself
+worth knowing, because a label that fires on everything discriminates nothing.
+- **Looks like:** the sentence still parses if you swap the word for a neutral synonym, but it stops landing.
+- **Cues:** flood/swarm/invasion for arrival, slash/gut for reduce, elites/regime for government, parasites/leeches for people.
+- **Example:** "The council *gutted* the budget and let the *flood* of applicants *swamp* our services."
+- **Prompt hint:** name the neutral word it replaced. If you cannot, it is probably not loaded language but a stronger label such as Dehumanization.
+
 ### **Outrage Farming**
 Posting content engineered to provoke moral indignation because indignation drives shares. The goal is the reaction, not the claim.
 - **Looks like:** a single villain, a shocking detail, an implied "can you believe this", no proposal.
@@ -114,13 +123,11 @@ Claiming one step must lead to an extreme outcome without showing the chain.
 - **Cues:** "next they will", "it starts with X and ends with Y", "where does it stop".
 - **Example:** "Today it is speed limits, tomorrow they ban cars."
 
-### **Appeal to Fear**
-Using fear as the reason to accept a conclusion. The fallacy form of Fear-mongering.
-- **Cues:** "if you don't X, then [catastrophe]" with the catastrophe standing in for evidence.
-
-### **Appeal to Emotion**
-Substituting any emotion (pity, pride, anger) for evidence.
-- **Cues:** anecdote about a child, a grandmother, a veteran, followed by a policy conclusion with no bridge.
+> **Retired in v3.1.** "Appeal to Fear" and "Appeal to Emotion" were canonical labels until the
+> taxonomy was measured. Having both a tactic and a fallacy for the same thing split the label
+> across two names and the model never once chose the fallacy: 38 uses of Fear-mongering against
+> 0 of Appeal to Fear across 194 analyses. Use **Fear-mongering** and **Emotional Bait**. Both old
+> spellings are accepted as synonyms by `normalize_label`, so an older run still scores.
 
 ### **Straw Man**
 Distorting the opponent's position into a weaker one, then attacking that.

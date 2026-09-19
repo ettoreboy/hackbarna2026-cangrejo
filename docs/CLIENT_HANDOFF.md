@@ -54,7 +54,12 @@ chrome.storage.sync.set({ backendUrl: "http://192.168.x.y:8000" })
 
 ## Your tasks, in priority order
 
-### 1. Render schema v3 (the whole job)
+### 1. Render schema v3 (the whole job) — DONE
+
+Diana shipped this, then went further: the drawer was rebuilt around a two-stage claim picker
+(`POST /api/v1/claims` then `POST /api/v1/analyze-claim`) and the analysis now renders inline in
+the tweet as an Unfold card. The requirements below still hold for every field; keep them in mind
+when changing the card.
 
 Rewrite `showResult` in `overlay.js` against the field guide in `docs/API.md`. The cases that must look right:
 
@@ -67,7 +72,12 @@ Rewrite `showResult` in `overlay.js` against the field guide in `docs/API.md`. T
 
 Canonical signal names are in `backend/prompts/taxonomy.py` if you want fixed colours or icons per name.
 
-### 2. Video posts (backend endpoint lands Sunday morning)
+### 2. Video posts — CANCELLED
+
+> The SLNG track was dropped to finish the text path. `POST /api/v1/analyze-media` does not
+> exist and will not before the deadline. Do not build against it. Keep the video detection
+> in `content.js` only to tell the reader there is nothing to analyse yet.
+
 
 - In `content.js`, detect `article.querySelector("video")`. If present the button reads "🛡️ Transcribe & Context" and sends `{type: "ANALYZE_MEDIA", payload: {post_url, author_handle, author_name, platform: "x"}}`.
 - In `background.js`, route that to `POST /api/v1/analyze-media` with a 45 s timeout.
@@ -78,7 +88,7 @@ Canonical signal names are in `backend/prompts/taxonomy.py` if you want fixed co
 
 Error states (backend unreachable, 502 with detail, 413 "Videos over 60 s are not supported yet"), button state reset after close, Esc returns focus to the button, check 1280 px and 1920 px. On wide screens consider docking right when the tweet sits left of centre.
 
-### 4. Demo recording, Sunday 09:30
+### 4. Demo recording, Sunday 09:30 (text path only)
 
 60 to 90 seconds: scroll the timeline, click a text post, show the drawer, click a video post, show transcript then drawer. Save as `docs/demo.mp4` or a public link in the README.
 
@@ -92,6 +102,6 @@ Error states (backend unreachable, 502 with detail, 413 "Videos over 60 s are no
 ## Definition of done
 
 - Every field in `docs/API.md` renders, and all six fake-mode handles look right.
-- Text and video paths work against a backend with real keys.
+- The text path works against a backend with real keys. There is no video path.
 - Demo recording exists.
 - No console errors on x.com.
