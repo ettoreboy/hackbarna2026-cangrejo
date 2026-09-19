@@ -1,0 +1,55 @@
+/* The only CSS that lands in x.com's own stylesheet scope: the injected button.
+   Everything else renders inside a Shadow DOM and carries its own styles (see drawer.js). */
+
+.cg-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1d4ed8;
+  background: rgba(29, 78, 216, 0.08);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease;
+}
+
+.cg-btn:hover {
+  background: rgba(29, 78, 216, 0.18);
+}
+
+.cg-btn:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.cg-btn[data-state="loading"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.cg-btn[data-state="done"] {
+  color: #047857;
+  background: rgba(4, 120, 87, 0.1);
+}
+
+/* X ships a dark theme; lift the colours so the button stays readable on it. */
+@media (prefers-color-scheme: dark) {
+  .cg-btn {
+    color: #93c5fd;
+    background: rgba(147, 197, 253, 0.12);
+  }
+  .cg-btn:hover {
+    background: rgba(147, 197, 253, 0.22);
+  }
+  .cg-btn:focus-visible {
+    outline-color: #93c5fd;
+  }
+  .cg-btn[data-state="done"] {
+    color: #6ee7b7;
+    background: rgba(110, 231, 183, 0.14);
+  }
+}

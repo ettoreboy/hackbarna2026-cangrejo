@@ -1,31 +1,34 @@
 {
   "manifest_version": 3,
   "name": "ContextGuard Social",
-  "version": "0.1.0",
-  "description": "Unpack political context, manipulation tactics and strategic intent behind posts on X.",
+  "version": "0.2.0",
+  "description": "Unpack the communication signals, logical fallacies and strategic intent behind posts on X. Not a fact-checker.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+
   "permissions": ["storage"],
+
   "host_permissions": [
-    "https://twitter.com/*",
-    "https://x.com/*",
     "http://127.0.0.1:8000/*",
     "http://localhost:8000/*"
   ],
+
   "background": {
     "service_worker": "background/background.js"
   },
+
   "content_scripts": [
     {
-      "matches": ["https://twitter.com/*", "https://x.com/*"],
-      "js": ["content/overlay.js", "content/content.js"],
-      "css": ["styles/overlay.css"],
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["content/taxonomy.js", "content/drawer.js", "content/content.js"],
+      "css": ["styles/button.css"],
       "run_at": "document_idle"
     }
   ],
+
   "action": {
     "default_title": "ContextGuard Social",
     "default_icon": {
