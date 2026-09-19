@@ -98,3 +98,34 @@ async def test_live_spec_example():
     print(body.model_dump_json(indent=2))
     assert body.claim_check.verdict == "unverifiable", "no evidence supplied, so no stronger verdict"
     assert body.speaker_context.background == "Unknown author"
+
+
+async def test_truncated_response_is_retried_once_with_a_bigger_budget():
+    """A long post can overrun the token budget; one retry at double saves the request.
+
+    Before this, finish_reason == "length" raised straight out and the reader got a 502 for a
+    post that simply produced a longer analysis than the benchmark ones.
+    """
+    server = MockChatServer(
+        chat_completion('{"found": true, "text": "Trunca', finish_reason="length"),
+        chat_completion(CLAIM),
+    )
+    a = NebiusAnalyzer(settings(), client=server.client())
+
+    claim = (await a.extract_claim(req())).result
+    assert claim.found is True
+    assert server.call_count == 2
+    assert server.body(1)["max_tokens"] == server.body(0)["max_tokens"] * 2
+
+
+async def test_truncated_twice_gives_up():
+    """The retry must not loop: two truncations in a row is a real failure."""
+    server = MockChatServer(
+        chat_completion('{"found": true', finish_reason="length"),
+        chat_completion('{"found": true', finish_reason="length"),
+    )
+    a = NebiusAnalyzer(settings(), client=server.client())
+
+    with pytest.raises(AnalysisError, match="twice"):
+        await a.extract_claim(req())
+    assert server.call_count == 2

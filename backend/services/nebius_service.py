@@ -103,7 +103,9 @@ class NebiusAnalyzer:
                 return await self.client.chat.completions.create(**kwargs)
             raise
 
-    async def _structured(self, model: str, system: str, user: str, out: type[M], max_tokens: int) -> StepOutcome[M]:
+    async def _structured(
+        self, model: str, system: str, user: str, out: type[M], max_tokens: int, _retrying: bool = False
+    ) -> StepOutcome[M]:
         strict_format = self._formats[out]
         try:
             if self._strict_ok.get(model, True):
@@ -130,7 +132,16 @@ class NebiusAnalyzer:
         if not content:
             raise AnalysisError(f"Nebius returned empty content (finish_reason={finish})")
         if finish == "length":
-            raise AnalysisError("Nebius hit the token limit before closing the JSON object")
+            # The JSON is truncated mid-object, so there is nothing to salvage. Budgets were set
+            # from benchmark posts and a long real one overruns them; reasoning_effort spends the
+            # same allowance, which makes the cap harder to predict than the visible output
+            # suggests. One retry at double, then give up rather than loop.
+            if not _retrying:
+                log.warning("%s hit max_tokens=%d; retrying once at %d", model, max_tokens, max_tokens * 2)
+                return await self._structured(model, system, user, out, max_tokens * 2, _retrying=True)
+            raise AnalysisError(
+                f"Nebius hit the token limit ({max_tokens}) before closing the JSON object, twice"
+            )
 
         try:
             result = out.model_validate_json(content)

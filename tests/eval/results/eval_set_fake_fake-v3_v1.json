@@ -1,0 +1,319 @@
+{
+  "provider": "fake",
+  "model": "fake-v3",
+  "prompt_version": "v1",
+  "brave_live_calls": 0,
+  "items": [
+    {
+      "id": "pair00:right",
+      "group": "right",
+      "pair_id": "pair00",
+      "topic": "migration",
+      "signal_target": "Scapegoating",
+      "author_handle": "@PatriotFront",
+      "author_name": "Patriot Front",
+      "post_text": "Since the new housing bill was passed on March 12, 2024, migrant arrivals have surged by 27%, and now 42% of the nation's vacant homes are being illegally occupied by them \u2013 a clear cause of our housing crisis. #StopTheInvasion",
+      "claim_expected": true,
+      "signals_expected": true,
+      "party": "",
+      "post_url": ""
+    },
+    {
+      "id": "pair00:left",
+      "group": "left",
+      "pair_id": "pair00",
+      "topic": "migration",
+      "signal_target": "Scapegoating",
+      "author_handle": "@ProgHousing",
+      "author_name": "Progressive Housing Coalition",
+      "post_text": "The council's own reports show that since March\u202f2022, 3,400 newly built units have sat empty while property developers hoard land for profit, making the housing crisis a deliberate capitalist scam. #HousingJustice",
+      "claim_expected": true,
+      "signals_expected": true,
+      "party": "",
+      "post_url": ""
+    },
+    {
+      "id": "pair01:right",
+      "group": "right",
+      "pair_id": "pair01",
+      "topic": "energy prices",
+      "signal_target": "Fear-mongering",
+      "author_handle": "@PatrioticVoice",
+      "author_name": "Patriotic Voice",
+      "post_text": "Since the GreenFuture Act forced power plants to shut down on 12\u202fMarch\u202f2024, the national grid has lost 15\u202f% of its capacity, and tomorrow's heatwave will leave millions without electricity \u2013 this is why we must roll back those reckless green policies now. #EnergyCrisis",
+      "claim_expected": true,
+      "signals_expected": true,
+      "party": "",
+      "post_url": ""
+    },
+    {
+      "id": "pair01:left",
+      "group": "left",
+      "pair_id": "pair01",
+      "topic": "energy prices",
+      "signal_target": "Fear-mongering",
+      "author_handle": "@GreenWorkers",
+      "author_name": "The Green Workers Union",
+      "post_text": "Since January\u202f12\u202f2024 the state\u2011run utility has forced blackouts across 3,000 households each day because the profit\u2011driven conglomerate PowerCorp refuses to cap prices, and if this continues our cities will plunge into darkness.",
+      "claim_expected": true,
+      "signals_expected": true,
+      "party": "",
+      "post_url": ""
+    },
+    {
+      "id": "pair02:right",
+      "group": "right",
+      "pair_id": "pair02",
+      "topic": "crime",
+      "signal_target": "Hasty Generalization",
+      "author_handle": "@PatriotVoice",
+      "author_name": "Patriot Front",
+      "post_text": "The arrest of a Syrian national for a bank robbery on 12\u202fMarch\u202f2026 proves that foreign criminals are flooding our streets \u2013 we must close the borders now. #SecureOurNation",
+      "claim_expected": true,
+      "signals_expected": true,
+      "party": "",
+      "post_url": ""
+    }
+  ],
+  "records": [
+    {
+      "schema_version": "3",
+      "analysis": {
+        "main_claim": {
+          "found": true,
+          "text": "Since the new housing bill was passed on March 12, 2024, migrant arrivals have surged by 27%, and now 42% of the nation's vacant homes are being illegally occupied by them \u2013 a clear cause of our housing crisis.",
+          "quote": "Since the new housing bill was passed on March 12, 2024, migrant arrivals have surged by 27%, and now 42% of the nation's vacant homes are being illegally occupied by them \u2013 a clear cause of our housing crisis"
+        },
+        "claim_check": {
+          "verdict": "unverifiable",
+          "explanation": "No evidence was found for this claim.",
+          "sources": []
+        },
+        "missing_context": "",
+        "rhetorical_signals": [
+          {
+            "name": "Loaded Language",
+            "evidence": "Since the new housing bill was passed on"
+          }
+        ],
+        "speaker_context": {
+          "name": "Patriot Front",
+          "role": "Public figure",
+          "background": "Patriot Front is an American white supremacist group. Part of the broader alt-right movement, the group split off from the neo-Nazi organization Vanguard America in the aftermath of the Unite the Right rally in 2017."
+        }
+      },
+      "evidence": [],
+      "sources": [
+        {
+          "title": "Patriot Front",
+          "url": "https://en.wikipedia.org/wiki/Patriot_Front",
+          "snippet": "Patriot Front is an American white supremacist group. Part of the broader alt-right movement, the group split off from the neo-Nazi organization Vanguard America in the aftermath of the Unite the Right rally in 2017.",
+          "provider": "wikipedia"
+        }
+      ],
+      "transcript": null,
+      "steps": {
+        "extract_ms": 62,
+        "evidence_ms": 0,
+        "analyse_ms": 0
+      },
+      "cached": false,
+      "latency_ms": 62,
+      "provider": "fake",
+      "model": "fake-v3",
+      "cost_usd": 0.0,
+      "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources.",
+      "id": "pair00:right",
+      "group": "right",
+      "wall_ms": 62,
+      "raw_cited_urls": []
+    },
+    {
+      "schema_version": "3",
+      "analysis": {
+        "main_claim": {
+          "found": true,
+          "text": "The council's own reports show that since March\u202f2022, 3,400 newly built units have sat empty while property developers hoard land for profit, making the housing crisis a deliberate capitalist scam.",
+          "quote": "The council's own reports show that since March\u202f2022, 3,400 newly built units have sat empty while property developers hoard land for profit, making the housing crisis a deliberate capitalist scam"
+        },
+        "claim_check": {
+          "verdict": "unverifiable",
+          "explanation": "No evidence was found for this claim.",
+          "sources": []
+        },
+        "missing_context": "",
+        "rhetorical_signals": [
+          {
+            "name": "Loaded Language",
+            "evidence": "The council's own reports show that sinc"
+          }
+        ],
+        "speaker_context": {
+          "name": "Progressive Housing Coalition",
+          "role": "",
+          "background": "Unknown author"
+        }
+      },
+      "evidence": [],
+      "sources": [],
+      "transcript": null,
+      "steps": {
+        "extract_ms": 659,
+        "evidence_ms": 0,
+        "analyse_ms": 0
+      },
+      "cached": false,
+      "latency_ms": 659,
+      "provider": "fake",
+      "model": "fake-v3",
+      "cost_usd": 0.0,
+      "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources.",
+      "id": "pair00:left",
+      "group": "left",
+      "wall_ms": 659,
+      "raw_cited_urls": []
+    },
+    {
+      "schema_version": "3",
+      "analysis": {
+        "main_claim": {
+          "found": true,
+          "text": "Since the GreenFuture Act forced power plants to shut down on 12\u202fMarch\u202f2024, the national grid has lost 15\u202f% of its capacity, and tomorrow's heatwave will leave millions without electricity \u2013 this is why we must roll back those reckless green policies now.",
+          "quote": "Since the GreenFuture Act forced power plants to shut down on 12\u202fMarch\u202f2024, the national grid has lost 15\u202f% of its capacity, and tomorrow's heatwave will leave millions without electricity \u2013 this is why we must roll back those reckless green policies now"
+        },
+        "claim_check": {
+          "verdict": "unverifiable",
+          "explanation": "No evidence was found for this claim.",
+          "sources": []
+        },
+        "missing_context": "",
+        "rhetorical_signals": [
+          {
+            "name": "Loaded Language",
+            "evidence": "Since the GreenFuture Act forced power p"
+          }
+        ],
+        "speaker_context": {
+          "name": "Patriotic Voice",
+          "role": "",
+          "background": "Unknown author"
+        }
+      },
+      "evidence": [],
+      "sources": [],
+      "transcript": null,
+      "steps": {
+        "extract_ms": 575,
+        "evidence_ms": 0,
+        "analyse_ms": 0
+      },
+      "cached": false,
+      "latency_ms": 575,
+      "provider": "fake",
+      "model": "fake-v3",
+      "cost_usd": 0.0,
+      "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources.",
+      "id": "pair01:right",
+      "group": "right",
+      "wall_ms": 575,
+      "raw_cited_urls": []
+    },
+    {
+      "schema_version": "3",
+      "analysis": {
+        "main_claim": {
+          "found": true,
+          "text": "Since January\u202f12\u202f2024 the state\u2011run utility has forced blackouts across 3,000 households each day because the profit\u2011driven conglomerate PowerCorp refuses to cap prices, and if this continues our cities will plunge into darkness.",
+          "quote": "Since January\u202f12\u202f2024 the state\u2011run utility has forced blackouts across 3,000 households each day because the profit\u2011driven conglomerate PowerCorp refuses to cap prices, and if this continues our cities will plunge into darkness"
+        },
+        "claim_check": {
+          "verdict": "unverifiable",
+          "explanation": "No evidence was found for this claim.",
+          "sources": []
+        },
+        "missing_context": "",
+        "rhetorical_signals": [
+          {
+            "name": "Loaded Language",
+            "evidence": "Since January\u202f12\u202f2024 the state\u2011run util"
+          }
+        ],
+        "speaker_context": {
+          "name": "The Green Workers Union",
+          "role": "",
+          "background": "Unknown author"
+        }
+      },
+      "evidence": [],
+      "sources": [],
+      "transcript": null,
+      "steps": {
+        "extract_ms": 545,
+        "evidence_ms": 0,
+        "analyse_ms": 0
+      },
+      "cached": false,
+      "latency_ms": 545,
+      "provider": "fake",
+      "model": "fake-v3",
+      "cost_usd": 0.0,
+      "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources.",
+      "id": "pair01:left",
+      "group": "left",
+      "wall_ms": 545,
+      "raw_cited_urls": []
+    },
+    {
+      "schema_version": "3",
+      "analysis": {
+        "main_claim": {
+          "found": true,
+          "text": "The arrest of a Syrian national for a bank robbery on 12\u202fMarch\u202f2026 proves that foreign criminals are flooding our streets \u2013 we must close the borders now.",
+          "quote": "The arrest of a Syrian national for a bank robbery on 12\u202fMarch\u202f2026 proves that foreign criminals are flooding our streets \u2013 we must close the borders now"
+        },
+        "claim_check": {
+          "verdict": "unverifiable",
+          "explanation": "No evidence was found for this claim.",
+          "sources": []
+        },
+        "missing_context": "",
+        "rhetorical_signals": [
+          {
+            "name": "Loaded Language",
+            "evidence": "The arrest of a Syrian national for a ba"
+          }
+        ],
+        "speaker_context": {
+          "name": "Patriot Front",
+          "role": "Public figure",
+          "background": "Patriot Front is an American white supremacist group. Part of the broader alt-right movement, the group split off from the neo-Nazi organization Vanguard America in the aftermath of the Unite the Right rally in 2017."
+        }
+      },
+      "evidence": [],
+      "sources": [
+        {
+          "title": "Patriot Front",
+          "url": "https://en.wikipedia.org/wiki/Patriot_Front",
+          "snippet": "Patriot Front is an American white supremacist group. Part of the broader alt-right movement, the group split off from the neo-Nazi organization Vanguard America in the aftermath of the Unite the Right rally in 2017.",
+          "provider": "wikipedia"
+        }
+      ],
+      "transcript": null,
+      "steps": {
+        "extract_ms": 13,
+        "evidence_ms": 0,
+        "analyse_ms": 0
+      },
+      "cached": false,
+      "latency_ms": 13,
+      "provider": "fake",
+      "model": "fake-v3",
+      "cost_usd": 0.0,
+      "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources.",
+      "id": "pair02:right",
+      "group": "right",
+      "wall_ms": 13,
+      "raw_cited_urls": []
+    }
+  ]
+}
