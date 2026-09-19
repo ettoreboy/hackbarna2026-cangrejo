@@ -24,7 +24,7 @@
   "content_scripts": [
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
-      "js": ["content/taxonomy.js", "content/theme.js", "content/card.js", "content/content.js"],
+      "js": ["content/taxonomy.js", "content/theme.js", "content/icon.js", "content/card.js", "content/content.js"],
       "css": ["styles/button.css"],
       "run_at": "document_idle"
     }

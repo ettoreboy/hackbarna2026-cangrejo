@@ -59,12 +59,9 @@
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
       padding: 11px 14px; border-bottom: 1px solid var(--border-soft);
     }
-    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
-    .mark {
-      width: 19px; height: 19px; border-radius: 5px; background: var(--accent);
-      color: #fff; font-size: 11px; font-weight: 800; line-height: 19px; text-align: center;
-      flex-shrink: 0;
-    }
+    .brand { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 14px; }
+    /* The mark inherits the colour property, so both tones follow X's accent. */
+    .uf-icon { display: block; color: var(--accent); flex-shrink: 0; }
     .hmeta { font-size: 13px; color: var(--muted); white-space: nowrap; }
 
     .view { padding: 13px 14px 4px; }
@@ -149,17 +146,15 @@
     .ev ul { margin: 0; padding-left: 17px; }
     .ev .snip { color: var(--muted); font-size: 12.5px; }
 
-    /* claim list inside the full-post view */
-    .cl { display: flex; gap: 11px; align-items: flex-start; width: 100%; text-align: left;
-      background: none; border: none; padding: 9px 0; cursor: pointer; color: inherit; font: inherit; }
-    .cl:hover .cl-title { color: var(--accent); }
-    .cl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-    .cl-n {
-      width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
-      font-size: 12px; font-weight: 700; line-height: 24px; text-align: center;
+    /* verdict marker on a claim row that has already been checked */
+    .dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      margin-right: 6px; vertical-align: middle;
     }
-    .cl-title { font-size: 14px; }
-    .cl-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .dot.green { background: var(--green); }
+    .dot.amber { background: var(--amber); }
+    .dot.red   { background: var(--red); }
+    .dot.grey  { background: var(--grey); }
 
     footer {
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -249,13 +244,26 @@
       this.root = this.host.attachShadow({ mode: "open" });
       this.root.innerHTML = `<style>${STYLE}</style><div class="card"></div>`;
       this.cardEl = this.root.querySelector(".card");
-      this.cardEl.setAttribute("data-theme", window.UF_THEME.current());
-      this.stopTheme = window.UF_THEME.onChange((t) => this.cardEl.setAttribute("data-theme", t));
+      this._applyPalette(window.UF_THEME.current(), window.UF_THEME.accent());
+      this.stopTheme = window.UF_THEME.onChange((mode, accent) => this._applyPalette(mode, accent));
 
       this.cardEl.addEventListener("click", (ev) => {
         const el = ev.target.closest("[data-act]");
         if (el) this._act(el.getAttribute("data-act"), el.getAttribute("data-id"));
       });
+    }
+
+    // X's accent is a user setting with six options, so it is read from the page rather than
+    // hard-coded. --accent drives the icon, the row highlights and every link in the card.
+    _applyPalette(mode, accent) {
+      if (!this.cardEl) return;
+      this.cardEl.setAttribute("data-theme", mode);
+      this.cardEl.style.setProperty("--accent", accent);
+      // The soft wash behind a selected row: the same colour, mostly transparent.
+      const rgb = String(accent).match(/\d+/g);
+      if (rgb && rgb.length >= 3) {
+        this.cardEl.style.setProperty("--accent-bg", `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${mode === "dark" ? 0.18 : 0.1})`);
+      }
     }
 
     get mounted() {
@@ -400,7 +408,7 @@
         meta = n ? plural(n, "source", "sources") : "";
       }
       return `<header>
-        <span class="brand"><span class="mark">U</span>Unfold</span>
+        <span class="brand">${window.UF_ICON.svg(19)}Unfold</span>
         <span class="hmeta">${esc(meta)}</span>
       </header>`;
     }
@@ -419,14 +427,24 @@
 
     _menu() {
       const claims = this._claims();
+      // This menu is the only claim list now, so a claim already checked carries its verdict
+      // here rather than in a second list inside the full-post view.
       const rows = claims
-        .map(
-          (c, i) => `<button type="button" class="row" data-act="claim" data-id="${esc(c.id)}">
+        .map((c, i) => {
+          const r = this.results.get(c.id);
+          let status = "";
+          if (r && r.state === "done") {
+            const v = window.UF_TAXONOMY.verdict(r.data.claim_check && r.data.claim_check.verdict);
+            status = `<span class="sub"><span class="dot ${v.tone}"></span>${esc(v.label)}</span>`;
+          } else if (r && r.state === "error") {
+            status = `<span class="sub"><span class="dot grey"></span>Could not check</span>`;
+          }
+          return `<button type="button" class="row" data-act="claim" data-id="${esc(c.id)}">
             <span class="n">${String(i + 1).padStart(2, "0")}</span>
-            <span class="rtext">&ldquo;${esc(c.text)}&rdquo;</span>
+            <span class="rtext">&ldquo;${esc(c.text)}&rdquo;${status}</span>
             <span class="chev">&rsaquo;</span>
-          </button>`
-        )
+          </button>`;
+        })
         .join("");
 
       return `<div class="view">
@@ -533,12 +551,13 @@
           Checking ${plural(claims.length, "claim", "claims")} against the web&hellip;</div></div>`;
       }
 
+      // No per-claim list here: the menu behind "All claims" already is that list, and
+      // repeating it made the same rows appear twice one tap apart.
       return `<div class="view">
         ${this._overview(claims)}
         ${this._whatIsMissing()}
         ${this._signalsBlock(d.rhetorical_signals)}
         ${this._speakerBlock(speaker, d.sources)}
-        ${this._claimsBlock(claims)}
       </div>`;
     }
 
@@ -640,31 +659,6 @@
       </div>`;
     }
 
-    _claimsBlock(claims) {
-      if (!claims.length) return "";
-      const rows = claims
-        .map((c, i) => {
-          const r = this.results.get(c.id);
-          let label = "Not checked";
-          let tone = "grey";
-          if (r && r.state === "done") {
-            const v = window.UF_TAXONOMY.verdict(r.data.claim_check && r.data.claim_check.verdict);
-            label = v.label;
-            tone = v.tone;
-          } else if (r && r.state === "error") {
-            label = "Could not check";
-          }
-          return `<button type="button" class="cl" data-act="claim" data-id="${esc(c.id)}">
-            <span class="cl-n pill ${tone}">${i + 1}</span>
-            <span>
-              <span class="cl-title">&ldquo;${esc(c.text)}&rdquo;</span>
-              <span class="cl-sub">${esc(label)} &middot; open claim</span>
-            </span>
-          </button>`;
-        })
-        .join("");
-      return `<div class="block"><h3>Claims in this post</h3>${rows}</div>`;
-    }
   }
 
   function joinList(parts) {

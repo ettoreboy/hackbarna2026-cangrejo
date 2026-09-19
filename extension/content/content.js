@@ -118,6 +118,24 @@
     };
   }
 
+  // ------------------------------------------------------------------ appearance
+
+  // The button lives in X's own stylesheet scope, so its accent travels as a custom property
+  // rather than a class. Read from the page because X's accent is a user setting.
+  function applyAccent(btn) {
+    const accent = window.UF_THEME.accent();
+    btn.style.setProperty("--uf-accent", accent);
+    const rgb = String(accent).match(/\d+/g);
+    if (rgb && rgb.length >= 3) {
+      btn.style.setProperty("--uf-accent-bg", `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.1)`);
+    }
+  }
+
+  // A theme or accent change repaints every button already on the timeline.
+  window.UF_THEME.onChange(() => {
+    document.querySelectorAll(".uf-btn").forEach(applyAccent);
+  });
+
   // ------------------------------------------------------------------ injection
 
   function injectButton(article) {
@@ -131,7 +149,8 @@
     btn.type = "button";
     btn.title = "Unfold what this post claims";
     btn.setAttribute("aria-expanded", "false");
-    btn.innerHTML = '<span class="uf-mark">U</span><span>Unfold</span>';
+    btn.innerHTML = window.UF_ICON.svg(18) + "<span>Unfold</span>";
+    applyAccent(btn);
 
     btn.addEventListener("click", async (ev) => {
       // X wraps tweets in a click handler that navigates to the post. Stop that.
