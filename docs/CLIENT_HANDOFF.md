@@ -22,9 +22,13 @@ The verdict is about the claim, never about the post. The UI must not say the po
 ## What already works in `extension/`
 
 - **Button injection**: `content/content.js` watches the timeline with a MutationObserver and adds a "🛡️ Context" button to every tweet's action bar. Every X selector is in the `SELECTORS` map at the top of the file; a DOM change is a one-place fix.
-- **Scraping**: on click it reads the tweet text, display name, `@handle` and canonical status URL, and sends `{type: "ANALYZE", payload}` to the service worker.
-- **Service worker**: `background/background.js` POSTs to `/api/v1/analyze` on the backend URL from `chrome.storage.sync.backendUrl` (default `http://127.0.0.1:8000`) and returns `{ok, data}` or `{ok:false, error}`.
-- **Drawer**: `content/overlay.js` renders a left drawer inside a Shadow DOM so X's CSS cannot leak in. Loading, error and result states exist, Esc and ✕ close it. **Its result rendering is v2 and must be rewritten.**
+- **Scraping**: on click it reads the tweet text, display name, `@handle` and canonical status URL, and sends `{type: "CLAIMS", payload}` to the service worker.
+- **Service worker**: `background/background.js` is the only part that touches the network — a fetch from a content script runs with x.com's origin and X's CSP blocks localhost. It POSTs to the backend URL from `chrome.storage.sync.backendUrl` (default `http://127.0.0.1:8000`) and returns `{ok, data}` or `{ok:false, error}`.
+- **Card**: `content/card.js` renders the analysis inline under the tweet inside a Shadow DOM, so X's CSS cannot leak in. Loading, error and result states exist.
+
+The live path is two-stage: `CLAIMS` → `POST /api/v1/claims` lists what is checkable, the reader
+picks one, `ANALYZE_CLAIM` → `POST /api/v1/analyze-claim` checks that one. `{type: "ANALYZE"}`
+and `/api/v1/analyze` are a one-shot fallback the card no longer uses.
 
 ## Run the backend with no keys
 
@@ -58,10 +62,10 @@ chrome.storage.sync.set({ backendUrl: "http://192.168.x.y:8000" })
 
 Diana shipped this, then went further: the drawer was rebuilt around a two-stage claim picker
 (`POST /api/v1/claims` then `POST /api/v1/analyze-claim`) and the analysis now renders inline in
-the tweet as an Unfold card. The requirements below still hold for every field; keep them in mind
-when changing the card.
+the tweet as an Unfold card. `content/overlay.js` is gone; `content/card.js` replaced it.
 
-Rewrite `showResult` in `overlay.js` against the field guide in `docs/API.md`. The cases that must look right:
+The field requirements below still hold, so keep them in mind when changing the card. Each case
+must look right:
 
 - **No claim.** `main_claim.found === false`: say "No checkable factual claim in this post" and render the verdict pill as neutral grey, not as a failure.
 - **Unverifiable.** Common and not an error. Grey pill, empty source list, explanation still shown.
@@ -90,7 +94,7 @@ Error states (backend unreachable, 502 with detail, 413 "Videos over 60 s are no
 
 ### 4. Demo recording, Sunday 09:30 (text path only)
 
-60 to 90 seconds: scroll the timeline, click a text post, show the drawer, click a video post, show transcript then drawer. Save as `docs/demo.mp4` or a public link in the README.
+60 to 90 seconds, text path only: scroll the timeline, click Unfold on a post, show the claim list, pick a claim, show the verdict with its citations. Save as `docs/demo.mp4` or a public link in the README.
 
 ## Things to know
 
