@@ -30,7 +30,14 @@ ANALYZER_PROVIDER=fake .venv/bin/uvicorn backend.main:app --reload    # no keys 
 .venv/bin/pytest -q                       # offline, ~0.3 s
 ```
 
-Extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`.
+`make` lists every target; `make setup` does the three lines above, `make smoke` runs the tests
+then boots the server and analyses a fixture post offline, `make docker-up` does the same in a
+container. The Makefile is the single place run commands live — add new ones there, not to docs.
+
+Extension: `make extension` (checks the contract, copies the path, opens the page), or by hand
+`chrome://extensions` → Developer mode → Load unpacked → `extension/`. `make extension-check`
+compares the backend taxonomy and verdicts against `extension/content/taxonomy.js` — run it after
+any change to either side (rule 3 above).
 
 ## Providers
 

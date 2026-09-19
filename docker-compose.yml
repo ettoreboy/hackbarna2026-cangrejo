@@ -1,0 +1,37 @@
+# make docker-up        fake mode, no keys, http://127.0.0.1:8000
+# make docker-up-live   reads .env, real providers
+#
+# The brave-cache volume outlives the container: cached search results are paid for once.
+
+services:
+  api:
+    build: .
+    image: contextguard:local
+    ports:
+      - "8000:8000"
+    environment:
+      # Literal, not "${ANALYZER_PROVIDER:-fake}": compose interpolates ./.env, so that form
+      # would inherit ANALYZER_PROVIDER=nebius from a developer's .env and 503 without a key.
+      ANALYZER_PROVIDER: fake
+      LOG_LEVEL: info
+    volumes:
+      - brave-cache:/cache
+    restart: unless-stopped
+
+  # Same image, but with the keys from .env. `docker compose --profile live up api-live`
+  api-live:
+    profiles: ["live"]
+    build: .
+    image: contextguard:local
+    env_file: .env
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      HOST: "0.0.0.0"
+      SEARCH_CACHE_PATH: /cache/brave.sqlite
+    volumes:
+      - brave-cache:/cache
+    restart: unless-stopped
+
+volumes:
+  brave-cache:
