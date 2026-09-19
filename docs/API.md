@@ -410,4 +410,8 @@ Bodies are `{"detail": "..."}`. Examples in `tests/fixtures/responses_v3/error_*
 
 ## Caching
 
-Identical `(provider, model, prompt_version, handle, text)` within `CACHE_TTL_SECONDS` (default 24 h) returns `cached: true` with `latency_ms: 0`. `?nocache=true` bypasses.
+Identical `(provider, model, prompt_version, handle, text)` within `CACHE_TTL_SECONDS` (default 24 h) returns `cached: true` with `latency_ms: 0` and makes no model call. `?nocache=true` bypasses.
+
+**The cache is what makes an answer repeatable.** The model is not: Nebius serves `gpt-oss-120b` from vLLM across four GPUs, so the same prompt at temperature 0 returns different text run to run — measured at 1, 2 or 3 rhetorical signals on one post across five identical calls. A fixed `seed` does not help; five calls at `seed=7` gave five distinct answers. So a post is analysed once and the answer is kept.
+
+Entries persist to `RESPONSE_CACHE_PATH` (default `.cache/responses.sqlite`, empty = memory only), so they survive a restart: a post rehearsed the night before answers identically on stage. `make clean-answers` drops them, and every post is then re-analysed and may come back different. `make status` prints how many are held.

@@ -223,6 +223,7 @@ status: ## Branch, dirty files, schema version, last commits
 	@echo "branch   $$(git rev-parse --abbrev-ref HEAD)"
 	@echo "schema   $$(grep -m1 SCHEMA_VERSION backend/schemas/analysis_schema.py)"
 	@echo "dirty    $$(git status --porcelain | wc -l | tr -d ' ') file(s)"
+	@echo "cached   $$($(PY) -c 'import sqlite3,pathlib; p=pathlib.Path(".cache/responses.sqlite"); print(sqlite3.connect(p).execute("select count(*) from responses").fetchone()[0] if p.exists() else 0)') analysed post(s)"
 	@git status --short
 	@echo
 	@git log --oneline -5
@@ -291,6 +292,11 @@ clean: ## Remove caches and bytecode (keeps .venv, .env, results)
 .PHONY: clean-cache
 clean-cache: ## Drop the Brave search cache — next run spends live queries
 	rm -f .cache/brave.sqlite
+
+.PHONY: clean-answers
+clean-answers: ## Drop cached analyses — every post is re-analysed, and may answer differently
+	rm -f .cache/responses.sqlite
+	@echo "cleared. The model is not reproducible, so re-analysed posts can differ from before."
 
 .PHONY: nuke
 nuke: clean ## Also delete the venv

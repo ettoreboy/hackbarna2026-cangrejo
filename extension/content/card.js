@@ -110,11 +110,19 @@
     .pill.grey  { color: var(--grey);  background: var(--grey-bg); }
 
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .signals { list-style: none; margin: 0; padding: 0; }
+    .signals li { margin: 0 0 10px; }
+    .signals li:last-child { margin-bottom: 0; }
+    .signals blockquote { margin-top: 5px; }
+    .no-quote { font-size: 12.5px; color: var(--muted); margin-left: 8px; }
     .chip {
       font-size: 12.5px; padding: 4px 11px; border-radius: 9999px;
       background: var(--accent-bg); color: var(--text);
     }
     .chip.other { color: var(--muted); font-style: italic; }
+    /* Dog Whistle, Scapegoating, Dehumanization. UF_TAXONOMY.isHighRisk has always been
+       exported; until now nothing called it and these rendered as ordinary chips. */
+    .chip.risk { background: var(--amber-bg); color: var(--amber); }
     .chip .q { color: var(--muted); }
 
     blockquote {
@@ -587,20 +595,21 @@
     _signalsBlock(signals) {
       const list = signals || [];
       if (!list.length) return "";
+      // One row per signal. A chip on its own is an accusation; the words that triggered it are
+      // what lets the reader disagree, so every signal shows its own quote, not just the first.
       return `<div class="block">
         <h3>Post signals</h3>
-        <div class="chips">${list
+        <ul class="signals">${list
           .map((s) => {
             const other = window.UF_TAXONOMY.isUncategorised(s.name);
-            const title = s.evidence ? ` title="${esc(s.evidence)}"` : "";
-            return `<span class="chip ${other ? "other" : ""}"${title}>${esc(s.name)}</span>`;
+            const risk = window.UF_TAXONOMY.isHighRisk(s.name);
+            const cls = ["chip", other ? "other" : "", risk ? "risk" : ""].filter(Boolean).join(" ");
+            return `<li>
+              <span class="${cls}">${esc(s.name)}</span>
+              ${s.evidence ? `<blockquote>${esc(s.evidence)}</blockquote>` : `<span class="no-quote">no quote returned</span>`}
+            </li>`;
           })
-          .join("")}</div>
-        ${
-          list[0] && list[0].evidence
-            ? `<blockquote>${esc(list[0].evidence)}</blockquote>`
-            : ""
-        }
+          .join("")}</ul>
       </div>`;
     }
 

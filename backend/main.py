@@ -16,7 +16,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import Settings, get_settings
 from backend.routers.analyze import router as analyze_router
 from backend.routers.compare import router as compare_router
-from backend.schemas.analysis_schema import SCHEMA_VERSION, AnalyzeResponse
+from backend.schemas.analysis_schema import (
+    SCHEMA_VERSION,
+    AnalyzeResponse,
+    ClaimAnalysisResponse,
+    ClaimsResponse,
+)
 from backend.services.analyzer_base import AnalysisError, Analyzer
 from backend.services.cache import TTLCache
 from backend.services.fake_service import FakeAnalyzer
@@ -56,7 +61,14 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
     async def lifespan(app: FastAPI):
         app.state.settings = settings
         app.state.http = httpx.AsyncClient(follow_redirects=True)
-        app.state.cache = TTLCache[AnalyzeResponse](ttl_seconds=settings.cache_ttl_seconds)
+        # One cache holds all three response types, so each row records its class to be
+        # rehydrated by. Persisted because the model does not repeat itself: the same post
+        # must not change its answer between a rehearsal and the demo.
+        app.state.cache = TTLCache[AnalyzeResponse](
+            ttl_seconds=settings.cache_ttl_seconds,
+            path=settings.response_cache_path or None,
+            models={m.__name__: m for m in (AnalyzeResponse, ClaimsResponse, ClaimAnalysisResponse)},
+        )
         app.state.search_cache = SearchCache(settings.search_cache_path) if settings.search_cache_path else NullCache()
         app.state.analyzers = analyzers if analyzers is not None else build_analyzers(settings)
         # Analyzers bound to a specific model, built on demand by /compare and kept for the
@@ -76,6 +88,7 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
         finally:
             await app.state.http.aclose()
             app.state.search_cache.close()
+            app.state.cache.close()
 
     app = FastAPI(
         title="Unfold API",

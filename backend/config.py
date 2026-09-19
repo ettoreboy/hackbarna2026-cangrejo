@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     port: int = Field(default=8000, alias="PORT")
     log_level: str = Field(default="info", alias="LOG_LEVEL")
     cache_ttl_seconds: int = Field(default=86_400, alias="CACHE_TTL_SECONDS")
+    # Where analysed posts are kept between restarts. The model is not reproducible run to
+    # run (see backend/services/cache.py), so this file is what makes a demo repeatable.
+    # Empty = memory only, which is what the tests use.
+    response_cache_path: str = Field(default=".cache/responses.sqlite", alias="RESPONSE_CACHE_PATH")
 
     @property
     def gemini_configured(self) -> bool:
