@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import Settings, get_settings
 from backend.routers.analyze import router as analyze_router
+from backend.routers.compare import router as compare_router
 from backend.schemas.analysis_schema import SCHEMA_VERSION, AnalyzeResponse
 from backend.services.analyzer_base import AnalysisError, Analyzer
 from backend.services.cache import TTLCache
@@ -86,6 +87,7 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
         allow_credentials=False,
     )
     app.include_router(analyze_router)
+    app.include_router(compare_router)
     return app
 
 

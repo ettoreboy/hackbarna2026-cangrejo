@@ -76,8 +76,10 @@ backend/
   main.py                        app factory, provider registry, CORS
   config.py                      settings; ANALYZER_PROVIDER picks the analyzer
   routers/analyze.py             /analyze, /health
+  routers/compare.py             /compare: one post, several arms, side by side
   services/analyzer_base.py      Analyzer protocol, AnalysisOutcome, AnalysisError
   services/pipeline.py           the three steps, timed
+  services/compare.py            sequential arms, shared evidence, agreement diff
   services/evidence_service.py   Brave search for the extracted claim
   services/nebius_service.py     Token Factory, strict json_schema, both steps
   services/schema_tools.py       Pydantic schema -> strict structured output
@@ -88,18 +90,23 @@ backend/
   services/stt_service.py        SLNG speech-to-text                      (WP3)
   services/media_service.py      yt-dlp audio extraction                  (WP3)
   services/cache.py              TTL cache keyed by provider+model+prompt+post
-  schemas/analysis_schema.py     schema v2, source of truth
+  schemas/analysis_schema.py     schema v3, source of truth
   prompts/taxonomy.py            canonical rhetorical-signal names
   prompts/claim_prompt.py        step 1: main claim extraction
   prompts/context_prompt.py      step 3: prompts v0 and v1, user prompt builder
   eval/                          balanced eval runner, metrics, fine-tune  (WP2, WP5)
+  eval/checks.py                 per-response quote, taxonomy and citation checks
 scripts/check_nebius.py          one-command validation of a Nebius key
+scripts/compare.py               side-by-side run of two to four arms on one post
+scripts/_render.py               terminal rendering shared by both scripts
 extension/                       Chrome MV3 client (Diana)
 tests/
   fixtures/posts.json            benchmark and control posts
   fixtures/responses_v3/         example API responses for the client
   test_pipeline.py               pipeline behaviour on the fake provider
   test_nebius.py                 provider: strict schema, fallback, errors, cost
+  test_gemini.py                 provider: determinism, salvage, failure modes, cost
+  test_compare.py                /compare: arms, shared evidence, arm failure
 docs/
   API.md                         the contract
   CLIENT_HANDOFF.md              brief for the extension developer

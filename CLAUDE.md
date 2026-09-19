@@ -46,6 +46,20 @@ Validate the key and the whole pipeline in one command. Run it after any prompt 
 
 It prints the five blocks the client renders, per-step latency and cost, and warns when a quote is not verbatim, a label is outside the taxonomy, or a cited URL was not in the evidence.
 
+To compare two arms — provider against provider, or prompt against prompt — on one post:
+
+```bash
+.venv/bin/python scripts/compare.py --post spec_example --variants nebius:v1,gemini:v1
+.venv/bin/python scripts/compare.py --post weidel_immigration --variants nebius:v1,nebius:v0
+ANALYZER_PROVIDER=fake .venv/bin/python scripts/compare.py --post spec_example --variants fake:v0,fake:v1
+```
+
+Arms run **sequentially on purpose**: the Brave cache is keyed on the claim text, so parallel
+arms would both miss it and spend two live searches. In order, arm 2 onward reuses arm 1's
+evidence, which is also what makes the comparison fair. `POST /api/v1/compare` is the same
+thing over HTTP. The three warnings live in `backend/eval/checks.py` and are shared with
+`check_nebius.py`.
+
 Measured on the benchmark posts: `openai/gpt-oss-120b` at `reasoning_effort=low` runs the two steps in 1.4 to 2.7 s; `Qwen/Qwen3-235B-A22B-Instruct-2507` takes 2.5 to 4 s; `Qwen/Qwen3-30B-A3B-Instruct-2507` took 27 s and is not usable. Reasoning models (GLM-Flash, DeepSeek-Flash, Nemotron-Lightning) spend the whole token budget thinking and fail.
 
 Two things to know when working on `nebius_service.py`:

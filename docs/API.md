@@ -117,6 +117,91 @@ Example Account
 Unknown author
 ```
 
+## `POST /api/v1/compare`
+
+Runs one post through two to four arms and returns them side by side. Additive to schema v3:
+nothing in `AnalyzeResponse` or `PostAnalysis` changes, so `schema_version` stays `"3"`.
+The extension does not need this endpoint; it exists for the evaluation story.
+
+Query params: `nocache=true`.
+
+Request is an `/analyze` request plus `variants`. `label` is optional and defaults to
+`provider:prompt_version`.
+
+```json
+{
+  "author_handle": "example_migrants",
+  "author_name": "Example Account",
+  "post_text": "Germany accepted 1.2M migrants last year. This government clearly doesn't care about German citizens.",
+  "variants": [
+    { "provider": "nebius", "prompt_version": "v1" },
+    { "provider": "gemini", "prompt_version": "v1" }
+  ]
+}
+```
+
+Response, abridged:
+
+```json
+{
+  "schema_version": "3",
+  "post_text": "...",
+  "author_handle": "example_migrants",
+  "arms": [
+    {
+      "label": "nebius:v1",
+      "provider": "nebius",
+      "prompt_version": "v1",
+      "model": "openai/gpt-oss-120b",
+      "response": { "...": "a complete AnalyzeResponse" },
+      "error": null,
+      "warnings": []
+    },
+    {
+      "label": "gemini:v1",
+      "provider": "gemini",
+      "prompt_version": "v1",
+      "model": "gemini-2.5-flash",
+      "response": null,
+      "error": "Gemini timed out after 20s",
+      "warnings": []
+    }
+  ],
+  "diff": {
+    "claim_agreement": 1.0,
+    "verdict_agreement": 1.0,
+    "signal_overlap": 0.0,
+    "verdicts": { "nebius:v1": "partially_supported", "nebius:v0": "partially_supported" },
+    "signals": { "nebius:v1": ["Loaded Language"], "nebius:v0": ["Other: emotive appeal / blame"] },
+    "latency_ms": { "nebius:v1": 2493, "nebius:v0": 2155 },
+    "cost_usd": { "nebius:v1": 0.00074, "nebius:v0": 0.0006 }
+  },
+  "evidence": [],
+  "total_latency_ms": 4648,
+  "total_cost_usd": 0.00134
+}
+```
+
+Notes for anyone consuming this:
+
+- **Arms run in order, not in parallel.** The Brave cache is keyed on the claim text, so
+  concurrent arms would both miss it and spend two live searches. Sequential means one live
+  search per compare and every arm judged on the same evidence. Two arms take 4 to 8 s.
+- **A failed arm is data, not an error.** `error` is filled, `response` is `null`, and the
+  request is still `200`. Only an all-arms failure is a `502`.
+- `warnings` carries the same three checks `scripts/check_nebius.py` prints: non-verbatim
+  quotes, labels outside `backend/prompts/taxonomy.py`, and cited URLs absent from the evidence.
+- The agreement rates are over unordered arm pairs and are `null` when fewer than two arms
+  succeeded. `claim_agreement` counts overlapping quoted spans, not string equality.
+- `evidence` at the top level is the first successful arm's evidence, which the other arms
+  shared.
+
+CLI equivalent, no server needed:
+
+```bash
+.venv/bin/python scripts/compare.py --post spec_example --variants nebius:v1,gemini:v1
+```
+
 ## `POST /api/v1/analyze-media` (arrives Sunday morning)
 
 Video posts. The server downloads the audio with yt-dlp, transcribes it with SLNG (Deepgram Nova 3, EU region), then runs the same pipeline on the transcript.
@@ -135,10 +220,10 @@ Full example: `tests/fixtures/responses_v3/media_example.json`. Expect 8 to 15 s
 
 | Status | Meaning |
 | --- | --- |
-| 400 | Unknown `provider` |
+| 400 | Unknown `provider`, or a `/compare` variant naming an unconfigured provider |
 | 413 | Video longer than the limit |
 | 422 | Validation error |
-| 502 | Model call failed or timed out; download or transcription failed |
+| 502 | Model call failed or timed out; download or transcription failed; every `/compare` arm failed |
 | 503 | No analyzer configured on the server |
 
 Bodies are `{"detail": "..."}`. Examples in `tests/fixtures/responses_v3/error_*.json`.
