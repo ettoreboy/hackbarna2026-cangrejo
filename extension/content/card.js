@@ -67,20 +67,23 @@
     .view { padding: 13px 14px 4px; }
     .ask { font-size: 14.5px; font-weight: 600; margin: 0 0 11px; }
 
-    /* rows: the full-post button and each claim */
+    /* rows: the full-post button and each claim.
+       align-items is flex-start so a claim wrapping to three lines keeps its number in the
+       top-left corner rather than drifting to the vertical middle. */
     .row {
-      display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+      display: flex; align-items: flex-start; gap: 11px; width: 100%; text-align: left;
       background: var(--sunken); border: 1px solid transparent; border-radius: 11px;
       padding: 11px 13px; margin-bottom: 7px; cursor: pointer; color: inherit;
       font: inherit; transition: background 120ms ease, border-color 120ms ease;
     }
-    .row:hover { background: var(--accent-bg); }
+    .row:hover { background: var(--accent-bg); border-color: var(--accent); }
     .row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .row.primary { background: var(--accent-bg); border-color: var(--accent); font-weight: 600; }
-    .row .chev { margin-left: auto; color: var(--muted); flex-shrink: 0; font-size: 15px; }
+    /* The primary row is the same weight and colour as the rest; it earns its outline only
+       under the cursor, like every other row. */
+    .row .chev { margin-left: auto; color: var(--muted); flex-shrink: 0; font-size: 15px; align-self: center; }
     .row .n {
       font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 700;
-      color: var(--accent); flex-shrink: 0; min-width: 17px;
+      color: var(--accent); flex-shrink: 0; min-width: 17px; line-height: 1.5;
     }
     .row .rtext { flex: 1; font-size: 14px; }
     .row .sub { display: block; font-size: 12.5px; color: var(--muted); font-weight: 400; margin-top: 2px; }
@@ -88,9 +91,11 @@
     .divider { display: flex; align-items: center; gap: 10px; margin: 13px 0 10px; color: var(--muted); font-size: 12.5px; }
     .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
 
+    /* Section titles sit back from the prose: lighter weight and wider tracking, so they
+       read as labels rather than competing with the sentence underneath. */
     h3 {
-      margin: 0 0 5px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em;
-      text-transform: uppercase; color: var(--muted);
+      margin: 0 0 6px; font-size: 11px; font-weight: 500; letter-spacing: .09em;
+      text-transform: uppercase; color: var(--muted); opacity: .85;
     }
     .block { padding: 13px 0; border-top: 1px solid var(--border-soft); }
     .block:first-child { border-top: none; padding-top: 0; }
@@ -112,9 +117,12 @@
     .signals li:last-child { margin-bottom: 0; }
     .signals blockquote { margin-top: 5px; }
     .no-quote { font-size: 12.5px; color: var(--muted); margin-left: 8px; }
+    /* Badges carry the accent rather than body black, and sit lighter than the prose:
+       300 where the font has a Light cut, otherwise the browser rounds it to normal. */
     .chip {
-      font-size: 12.5px; padding: 4px 11px; border-radius: 9999px;
-      background: var(--accent-bg); color: var(--text);
+      font-size: 12.5px; padding: 7px 12px; border-radius: 9999px;
+      background: var(--accent-bg); color: var(--accent); font-weight: 300;
+      letter-spacing: .01em; line-height: 1.2;
     }
     .chip.other { color: var(--muted); font-style: italic; }
     /* Dog Whistle, Scapegoating, Dehumanization. UF_TAXONOMY.isHighRisk has always been
@@ -160,12 +168,18 @@
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
       padding: 10px 14px; border-top: 1px solid var(--border-soft); background: var(--sunken);
     }
+    /* Navigation, not a call to action: grey until the cursor is on it, never underlined.
+       The chevrons are the same glyphs the claim rows use, so forward and back read alike. */
     footer button {
-      background: none; border: none; padding: 4px 2px; cursor: pointer; color: var(--accent);
-      font: 600 13.5px/1.2 inherit; border-radius: 6px;
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: none; padding: 4px 2px; cursor: pointer; color: var(--muted);
+      font: 500 13.5px/1.2 inherit; border-radius: 6px;
+      transition: color 120ms ease;
     }
-    footer button:hover { text-decoration: underline; }
+    footer button:hover { color: var(--accent); }
+    footer button:hover .chev { color: var(--accent); }
     footer button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    footer .chev { color: var(--muted); font-size: 15px; line-height: 1; transition: color 120ms ease; }
     footer .spacer { flex: 1; }
     .disclaimer { padding: 9px 14px 11px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
 
@@ -185,6 +199,10 @@
     String(s ?? "").replace(/[&<>"']/g, (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
     );
+
+  // Every view that is not the menu returns to it the same way.
+  const BACK_BUTTON =
+    '<button type="button" data-act="menu"><span class="chev">&lsaquo;</span>Go back</button>';
 
   const UNKNOWN_AUTHOR = "unknown author";
   const norm = (s) => String(s ?? "").trim().replace(/\.$/, "").toLowerCase();
@@ -383,7 +401,7 @@
         foot = this._claimFooter();
       } else if (this.view === "post") {
         view = this._postView();
-        foot = `<button type="button" data-act="menu">&larr; All claims</button><span class="spacer"></span>`;
+        foot = `${BACK_BUTTON}<span class="spacer"></span>`;
       }
 
       const disclaimer =
@@ -530,12 +548,12 @@
       const claims = this._claims();
       const i = claims.findIndex((c) => c.id === this.currentId);
       const next = claims[i + 1];
-      return `<button type="button" data-act="menu">&larr; All claims</button>
+      return `${BACK_BUTTON}
         <span class="spacer"></span>
         ${
           next
-            ? `<button type="button" data-act="claim" data-id="${esc(next.id)}">Open claim ${i + 2} &rarr;</button>`
-            : `<button type="button" data-act="post">Full post &rarr;</button>`
+            ? `<button type="button" data-act="claim" data-id="${esc(next.id)}">Open claim ${i + 2}<span class="chev">&rsaquo;</span></button>`
+            : `<button type="button" data-act="post">Full post<span class="chev">&rsaquo;</span></button>`
         }`;
     }
 
