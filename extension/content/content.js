@@ -11,6 +11,9 @@
   if (window.__contextGuardLoaded) return;
   window.__contextGuardLoaded = true;
 
+  // Firefox exposes the promise-flavoured `browser`; Chrome only has `chrome`. One name for both.
+  const api = globalThis.browser ?? globalThis.chrome;
+
   const SELECTORS = {
     tweet: 'article[data-testid="tweet"]',
     text: '[data-testid="tweetText"]',
@@ -93,7 +96,7 @@
       // Stage 1: what is checkable in this post. Nothing is checked yet.
       claims() {
         if (MEDIA_ENABLED && payload.has_video) {
-          return chrome.runtime.sendMessage({
+          return api.runtime.sendMessage({
             type: "ANALYZE_MEDIA",
             payload: {
               post_url: payload.post_url,
@@ -103,11 +106,11 @@
             },
           });
         }
-        return chrome.runtime.sendMessage({ type: "CLAIMS", payload: postBody(payload) });
+        return api.runtime.sendMessage({ type: "CLAIMS", payload: postBody(payload) });
       },
       // Stage 2: check the one claim the reader picked.
       checkClaim(claim) {
-        return chrome.runtime.sendMessage({
+        return api.runtime.sendMessage({
           type: "ANALYZE_CLAIM",
           payload: { ...postBody(payload), claim },
         });

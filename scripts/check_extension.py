@@ -1,4 +1,4 @@
-"""Read-only contract check on extension/ before loading it into Chrome.
+"""Read-only contract check on extension/ before loading it into Chrome or Firefox.
 
 The extension is Diana's tree and the backend is mine; the two agree on three things and
 nothing enforces them at runtime: the signal vocabulary (CLAUDE.md rule 3), the verdict
@@ -76,7 +76,9 @@ def main() -> int:
     listed: list[str] = []
     for block in manifest.get("content_scripts", []):
         listed += block.get("js", []) + block.get("css", [])
-    listed.append(manifest.get("background", {}).get("service_worker", ""))
+    background_block = manifest.get("background", {})
+    listed.append(background_block.get("service_worker", ""))
+    listed += background_block.get("scripts", [])
     listed += list(manifest.get("icons", {}).values())
     missing = [f for f in listed if f and not (EXT / f).exists()]
     check(not missing, f"all {len(listed)} referenced files exist" + (f" — missing {missing}" if missing else ""))
@@ -89,6 +91,22 @@ def main() -> int:
     default_backend = m.group(1) if m else ""
     check(bool(default_backend) and f":{port}" in default_backend, f"DEFAULT_BACKEND is {default_backend or '(not found)'}")
     check(any(default_backend.startswith(h.rstrip("/*")) for h in hosts), "DEFAULT_BACKEND is inside host_permissions")
+
+    # Firefox release runs an event page, not an MV3 service worker, and refuses storage.sync
+    # without a stable add-on id. Both browsers read one manifest, so both keys must stay.
+    check(bool(background_block.get("service_worker")), "background.service_worker is set (Chrome)")
+    check(bool(background_block.get("scripts")), "background.scripts is set (Firefox)")
+    gecko_id = manifest.get("browser_specific_settings", {}).get("gecko", {}).get("id", "")
+    check(bool(gecko_id), f"browser_specific_settings.gecko.id is {gecko_id or '(not set)'} — storage.sync needs it in Firefox")
+
+    # `chrome.*` is callback-flavoured in Firefox, so an awaited call there returns undefined.
+    # Every call must go through the `globalThis.browser ?? globalThis.chrome` shim.
+    bare = []
+    for js in sorted(EXT.rglob("*.js")):
+        for n, line in enumerate(js.read_text().splitlines(), 1):
+            if re.search(r"(?<![\w.])chrome\.(runtime|storage|tabs|action|scripting)\b", line) and not line.lstrip().startswith("//"):
+                bare.append(f"{js.relative_to(EXT)}:{n}")
+    check(not bare, "no bare chrome.* calls" + (f" — {bare}" if bare else " (browser/chrome shim used everywhere)"))
 
     taxonomy = (EXT / "content" / "taxonomy.js").read_text()
 

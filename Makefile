@@ -43,7 +43,7 @@ help: ## List targets
 setup: $(VENV) .env ## Create the venv, install deps, seed .env
 	@echo
 	@echo "  next:  make run-fake      backend, offline, no keys"
-	@echo "         make extension     load the Chrome extension"
+	@echo "         make extension     load the extension in Chrome (make firefox for Firefox)"
 
 $(VENV):
 	uv venv $(VENV) --python 3.11
@@ -211,7 +211,7 @@ status: ## Branch, dirty files, schema version, last commits
 	@git log --oneline -5
 
 .PHONY: extension
-extension: extension-check ## Install the extension: copies the path, opens chrome://extensions
+extension: extension-check ## Install the extension in Chrome: copies the path, opens chrome://extensions
 	@# Chrome 137+ ignores --load-extension, so loading unpacked is a manual four clicks.
 	@printf '%s' "$(CURDIR)/extension" | pbcopy 2>/dev/null && copied="(path copied to clipboard)" || copied=""; \
 	echo; \
@@ -224,6 +224,28 @@ extension: extension-check ## Install the extension: copies the path, opens chro
 	echo "  Backend must be running: make run-fake  (or make docker-up)"; \
 	echo
 	@open -a "Google Chrome" "chrome://extensions" 2>/dev/null || echo "  open chrome://extensions by hand"
+
+.PHONY: extension-firefox
+firefox: extension-firefox
+extension-firefox: extension-check ## Install the extension in Firefox (temporary add-on, gone on restart)
+	@# Firefox release only takes unsigned add-ons as temporary ones, and its file picker
+	@# wants manifest.json itself, not the folder — so that is what goes on the clipboard.
+	@printf '%s' "$(CURDIR)/extension/manifest.json" | pbcopy 2>/dev/null && copied="(manifest path copied to clipboard)" || copied=""; \
+	echo; \
+	echo "  Load Temporary Add-on  $$copied"; \
+	echo "    1. about:debugging#/runtime/this-firefox  (opening now)"; \
+	echo "    2. Load Temporary Add-on…"; \
+	echo "    3. paste  $(CURDIR)/extension/manifest.json   (the file, not the folder)"; \
+	echo "    4. about:addons → ContextGuard → Permissions → allow 127.0.0.1"; \
+	echo "       (Firefox MV3 leaves host permissions off until you say yes)"; \
+	echo "    5. open x.com and click 🛡️ Context on any post"; \
+	echo; \
+	echo "  Gone on restart — rerun this target after every Firefox launch."; \
+	echo "  Backend must be running: make run-fake  (or make docker-up)"; \
+	echo
+	@/Applications/Firefox.app/Contents/MacOS/firefox --new-tab "about:debugging#/runtime/this-firefox" >/dev/null 2>&1 \
+	  || open -a Firefox "about:debugging#/runtime/this-firefox" 2>/dev/null \
+	  || echo "  open about:debugging#/runtime/this-firefox by hand"
 
 .PHONY: extension-check
 extension-check: ## Verify the extension and the backend still agree (ports, verdicts, signals)

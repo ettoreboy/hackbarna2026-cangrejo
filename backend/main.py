@@ -81,7 +81,12 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=r"^(chrome-extension://[a-z]{32}|https?://(localhost|127\.0\.0\.1)(:\d+)?)$",
+        # Chrome ids are 32 letters; Firefox hands the add-on a fresh moz-extension UUID per profile.
+        allow_origin_regex=(
+            r"^(chrome-extension://[a-z]{32}"
+            r"|moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+            r"|https?://(localhost|127\.0\.0\.1)(:\d+)?)$"
+        ),
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["content-type"],
         allow_credentials=False,
