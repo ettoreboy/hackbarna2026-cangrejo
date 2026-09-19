@@ -70,7 +70,12 @@ async def wait_running(client: httpx.AsyncClient, headers: dict, endpoint_id: st
         await asyncio.sleep(every)
 
 
-async def smoke(settings: Settings, model: str) -> None:
+def data_plane_url(region: str) -> str:
+    """A dedicated endpoint is only reachable on its region's host, not the global one."""
+    return f"https://api.tokenfactory.{region}.nebius.com/v1/"
+
+
+async def smoke(settings: Settings, model: str, region: str) -> None:
     """One real pipeline post through the served model, so we learn latency and whether the
     strict schema survives fine-tuning."""
     from backend.schemas.analysis_schema import AnalyzeRequest
@@ -78,7 +83,8 @@ async def smoke(settings: Settings, model: str) -> None:
     from backend.services.pipeline import run_pipeline
     from backend.services.search_cache import SearchCache
 
-    tuned = settings.model_copy(update={"nebius_model": model})
+    tuned = settings.model_copy(update={"nebius_model": model, "nebius_base_url": data_plane_url(region)})
+    print(f"\ncalling {model} at {tuned.nebius_base_url}")
     analyzer = NebiusAnalyzer(tuned)
     req = AnalyzeRequest(
         post_text="Germany accepted 1.2M migrants last year. This government clearly doesn't care about German citizens.",
@@ -109,6 +115,8 @@ async def main() -> int:
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--delete", metavar="ENDPOINT_ID")
     ap.add_argument("--no-smoke", action="store_true")
+    ap.add_argument("--custom-weights", metavar="MODEL_ARTIFACT_ID",
+                    help="model-artifact_... from POST /v0/model_artifacts; see docs/SERVING.md")
     args = ap.parse_args()
 
     settings = Settings()  # type: ignore[call-arg]
@@ -133,7 +141,7 @@ async def main() -> int:
             "gpu_type": args.gpu_type,
             "region": args.region,
             "gpu_count": args.gpu_count,
-            "custom_weights_id": ckpt_id,
+            "custom_weights_id": args.custom_weights or ckpt_id,
             "scaling": {"min_replicas": 1, "max_replicas": 1},
         }
         print(json.dumps(body, indent=2))
@@ -157,10 +165,11 @@ async def main() -> int:
         STATE.write_text(json.dumps(state, indent=2, default=str))
         served = ep.get("routing_key") or ep.get("model_name") or endpoint_id
         print(f"\nserved as: {served}")
+        print(f"point the app at it:\n  NEBIUS_MODEL={served} NEBIUS_BASE_URL={data_plane_url(args.region)}")
         print(f"delete with: .venv/bin/python -m backend.eval.serve_finetune --delete {endpoint_id}")
 
     if not args.no_smoke:
-        await smoke(settings, served)
+        await smoke(settings, served, args.region)
     return 0
 
 
