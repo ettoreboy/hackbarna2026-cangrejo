@@ -1,21 +1,27 @@
 # ContextGuard Social
 
-Chrome extension plus FastAPI backend that unpacks *why* a post on X is built the way it is: a neutral summary, who the author is, which communication signals and logical fallacies the text uses with the words that carry them, the strategic motive, a manipulation band, and one paragraph teaching the pattern.
+Chrome extension plus FastAPI backend that analyses a post on X claim-first:
 
-It is **not a fact-checker** and never returns a true/false verdict.
+1. **Main claim** — the one independently verifiable factual claim in the post, separated from opinion and rhetoric.
+2. **Claim check** — that claim against web evidence: supported, partially supported, unsupported, or unverifiable, with sources.
+3. **Missing context** — what a reader needs to know that the post leaves out.
+4. **Rhetorical signals** — how the post is written, each with the exact words that triggered it.
+5. **Speaker context** — who the author is, neutrally.
+
+The verdict is about the claim, never about the post. The tool does not label posts true or false and does not guess at the author's intentions.
 
 Built at HackBarna AI Summit 26, Norrsken House Barcelona, 19–20 September 2026.
 
 ```
-Chrome extension ── text ──▶ POST /api/v1/analyze ──────────────┐
-                 ── video ─▶ POST /api/v1/analyze-media          │
-                              yt-dlp → audio → SLNG STT (EU)     │
-                              transcript ────────────────────────┤
-                                                                 ▼
-                            Wikipedia → Brave (author background)
-                                                                 ▼
-                            Nebius Token Factory (Qwen3-235B, strict JSON)
-                            or Gemini 2.5 Flash (baseline) or fake (offline)
+Chrome extension ── text ──▶ POST /api/v1/analyze
+                 ── video ─▶ POST /api/v1/analyze-media → yt-dlp → SLNG STT (EU)
+                                        │
+                     step 1 ────────────┴──▶ extract main claim        (model)
+                     step 2  Brave search on the claim  +  Wikipedia→Brave on the author
+                     step 3  claim check · missing context · signals · speaker  (model, strict JSON)
+
+Models: Nebius Token Factory (gpt-oss-120b default) · Gemini 2.5 Flash (baseline) · fake (offline)
+Measured end to end: 1.4–2.7 s
 ```
 
 ## Quick start
@@ -48,7 +54,7 @@ Tests: `.venv/bin/pytest -q` (offline). Live check: `.venv/bin/pytest -q -m live
 
 | Sponsor | Role in the project |
 | --- | --- |
-| **Nebius Token Factory** | Primary analyzer. Qwen3-235B-A22B with strict `json_schema` output. Also hosts the LoRA fine-tune that adapts a 30B model to this schema and taxonomy. |
+| **Nebius Token Factory** | Both model calls. `gpt-oss-120b` with strict `json_schema` output at `reasoning_effort=low`. Also hosts the LoRA fine-tune that adapts a smaller model to this schema and taxonomy. |
 | **Galtea** | Evaluation. Finds the worst flaw (partisan asymmetry, prompt injection) and proves the guarded prompt fixes it. Custom self-hosted metrics. |
 | **SLNG** | Speech-to-text for video posts. Deepgram Nova 3 over the EU region so audio never leaves the EU. |
 
@@ -71,7 +77,9 @@ backend/
   config.py                      settings; ANALYZER_PROVIDER picks the analyzer
   routers/analyze.py             /analyze, /health
   services/analyzer_base.py      Analyzer protocol, AnalysisOutcome, AnalysisError
-  services/nebius_service.py     Token Factory, strict json_schema
+  services/pipeline.py           the three steps, timed
+  services/evidence_service.py   Brave search for the extracted claim
+  services/nebius_service.py     Token Factory, strict json_schema, both steps
   services/schema_tools.py       Pydantic schema -> strict structured output
   services/pricing.py            token price table, NEBIUS_PRICES override
   services/gemini_service.py     Gemini 2.5 Flash baseline
@@ -81,15 +89,17 @@ backend/
   services/media_service.py      yt-dlp audio extraction                  (WP3)
   services/cache.py              TTL cache keyed by provider+model+prompt+post
   schemas/analysis_schema.py     schema v2, source of truth
-  prompts/taxonomy.py            canonical signal and fallacy names
-  prompts/context_prompt.py      system prompts v0 and v1, user prompt builder
+  prompts/taxonomy.py            canonical rhetorical-signal names
+  prompts/claim_prompt.py        step 1: main claim extraction
+  prompts/context_prompt.py      step 3: prompts v0 and v1, user prompt builder
   eval/                          balanced eval runner, metrics, fine-tune  (WP2, WP5)
 scripts/check_nebius.py          one-command validation of a Nebius key
 extension/                       Chrome MV3 client (Diana)
 tests/
   fixtures/posts.json            benchmark and control posts
-  fixtures/responses_v2/         example API responses for the client
-  test_analyzer.py               28 offline tests + 1 opt-in live test
+  fixtures/responses_v3/         example API responses for the client
+  test_pipeline.py               pipeline behaviour on the fake provider
+  test_nebius.py                 provider: strict schema, fallback, errors, cost
 docs/
   API.md                         the contract
   CLIENT_HANDOFF.md              brief for the extension developer
@@ -102,10 +112,11 @@ docs/
 ## Known limits
 
 - **X only.** Instagram selectors change too often.
-- **Latency 2.5–4 s** on a cold text post, 8–15 s for video, near-instant when cached. The 1.5 s target in the original spec is discussed in `docs/ANALYSIS.md`.
+- **Latency 1.4–2.7 s** on a cold text post (two model calls plus search), 8–15 s for video, near-instant when cached.
+- **A claim check needs evidence.** Without `BRAVE_API_KEY` every verdict is `unverifiable`, which is honest but makes a poor demo.
 - **Single-process cache.** Swap for Redis before running multiple workers.
 - **No auth.** Localhost only. Add an API key header and rate limiting before hosting.
-- **Not a fact-check.** Every response carries a disclaimer and its sources.
+- **Not a fact-check.** The verdict covers one extracted claim against the sources listed, nothing more. Every response carries a disclaimer.
 
 ## Privacy
 

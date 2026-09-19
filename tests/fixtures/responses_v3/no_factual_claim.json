@@ -1,0 +1,49 @@
+{
+  "schema_version": "3",
+  "analysis": {
+    "main_claim": {
+      "found": false,
+      "text": "",
+      "quote": ""
+    },
+    "claim_check": {
+      "verdict": "no_factual_claim",
+      "explanation": "The post makes no checkable factual claim.",
+      "sources": []
+    },
+    "missing_context": "",
+    "rhetorical_signals": [
+      {
+        "name": "Dehumanization",
+        "evidence": "parasite"
+      },
+      {
+        "name": "Scapegoating",
+        "evidence": "Every landlord in this city"
+      },
+      {
+        "name": "False Dilemma",
+        "evidence": "Either we freeze all rents tomorrow or we watch our neighbourhoods die"
+      }
+    ],
+    "speaker_context": {
+      "name": "Example Left MP",
+      "role": "",
+      "background": "Unknown author"
+    }
+  },
+  "evidence": [],
+  "sources": [],
+  "transcript": null,
+  "steps": {
+    "extract_ms": 1500,
+    "evidence_ms": 0,
+    "analyse_ms": 1200
+  },
+  "cached": false,
+  "latency_ms": 2730,
+  "provider": "nebius",
+  "model": "openai/gpt-oss-120b",
+  "cost_usd": 0.00053,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources."
+}

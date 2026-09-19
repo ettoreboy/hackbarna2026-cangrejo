@@ -2,7 +2,9 @@
 
 Written for: whoever writes the detection prompts and the evaluation rubric. One page per concept is too much; one paragraph each is the goal. Each entry gives a definition, what it looks like in a short post, the textual cues a model should look for, and a neutral example. Examples are invented and attributed to nobody.
 
-Three groups: **manipulation tactics** (rhetorical moves aimed at emotion or identity), **logical fallacies** (defective reasoning, can be used innocently), and **psychological mechanisms** (what the tactics exploit; useful for the `cognitive_summary`, not as detection labels).
+Three groups: **manipulation tactics** (rhetorical moves aimed at emotion or identity), **logical fallacies** (defective reasoning, can be used innocently), and **psychological mechanisms** (what the tactics exploit — background for whoever writes the prompts, never returned as a label).
+
+In schema v3 the first two groups are one vocabulary, `rhetorical_signals`. The model returns a name plus the verbatim words from the post that triggered it. There is no manipulation score.
 
 Use the **canonical names** in bold as the labels the model returns. The badge UI and the evaluation rubric key on them, so spelling must not drift.
 
@@ -175,7 +177,7 @@ Negative and threatening information captures attention faster and is remembered
 People evaluate evidence to protect group belonging rather than to find truth. It is why a fact-check alone rarely works, and why the tool teaches the *pattern* rather than declaring the post false.
 
 ### Inoculation (prebunking)
-Exposure to a weakened form of a manipulation technique, plus an explanation of how it works, builds resistance to later encounters. Effects are measured in weeks and decay without reminders. The `cognitive_summary` should always end by naming the technique in general form so each analysis doubles as a booster.
+Exposure to a weakened form of a manipulation technique, plus an explanation of how it works, builds resistance to later encounters. Effects are measured in weeks and decay without reminders. Naming the technique and quoting the words that carry it is the part that transfers: the reader learns the pattern, not a verdict.
 
 ### Illusory truth
 Repetition increases perceived truth regardless of accuracy. Relevant to `strategic_intent` when a post repeats a known talking point rather than adding anything.
@@ -184,10 +186,10 @@ Repetition increases perceived truth regardless of accuracy. Relevant to `strate
 
 ## D. How to use this for prompts
 
-1. **One canonical list.** The bold names from sections A and B live in `backend/prompts/taxonomy.py` (`TACTICS`, `FALLACIES`, a synonym map, and `normalize_label`). The prompt builder injects them as the allowed vocabulary for `communication_signals[].name` and `logical_fallacies[].name`; the schema normalises whatever the model returns. Unlisted labels come back as "Other: <name>" so the list can grow from real output.
+1. **One canonical list.** The bold names from sections A and B live in `backend/prompts/taxonomy.py` as a single `SIGNALS` tuple, with a synonym map and `normalize_label`. The prompt builder injects them as the allowed vocabulary for `rhetorical_signals[].name`; the schema normalises whatever the model returns, including typographic dashes. Unlisted labels come back as "Other: <name>" so the list can grow from real output.
 2. **Cues become the checklist.** For each label, the prompt can carry one line: the cues above. That is enough for Flash-class models; long definitions cost tokens and do not improve recall.
 3. **Confidence for the risky labels.** Dog Whistle, Scapegoating and Dehumanization carry reputational risk if wrong. Ask for a 0 to 1 confidence and suppress the badge below 0.6.
-4. **Score is a function of labels, not a free number.** A more defensible `manipulation_score` is computed server-side: weight each detected label (Dehumanization and Scapegoating high, Emotional Bait low), cap at 100. This makes the number explainable and stable across runs. Consider it for v1.1.
+4. **No score.** v3 dropped the 0-100 manipulation score. An uncalibrated number invited over-trust and drowned the qualitative findings; the list of named signals with their quotes is both more defensible and more useful. If a summary indicator is ever needed, derive it server-side from the labels rather than asking the model for a number.
 5. **Controls.** Every technique here has a left, right and centrist example available. When building the evaluation set, pick posts so each label appears at least once from each side.
 
 ## Further reading

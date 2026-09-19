@@ -1,6 +1,6 @@
 # ContextGuard Social — working agreement
 
-Chrome extension + FastAPI backend that unpacks *why* a post on X is built the way it is: post summary, author background, communication signals with quoted evidence, logical fallacies, strategic indicators, a manipulation band, and a one-paragraph lesson. Not a fact-checker.
+Chrome extension + FastAPI backend that analyses a post on X claim-first: extract the one main factual claim, check it against web evidence, say what context is missing, name the rhetorical signals with the words that triggered them, and give neutral speaker context. The verdict is about the claim, never about the post.
 
 Built at HackBarna AI Summit 26 (19–20 Sept 2026). Code deadline Sunday 11:00.
 
@@ -15,9 +15,10 @@ Do not edit the other owner's tree without a heads-up in the team chat. The cont
 
 ## Contract rules
 
-1. `backend/schemas/analysis_schema.py` is the source of truth. Any change to `AnalyzeResponse` or `AnalysisResult` bumps `SCHEMA_VERSION`, updates `docs/API.md`, and regenerates `tests/fixtures/responses_v2/`.
-2. Schema v2 is **frozen from Sat 19 Sept 16:00**. After that, additive changes only (new optional fields), never renames or removals.
-3. Canonical labels live in `backend/prompts/taxonomy.py`. The extension may hard-code that list for badges; if it changes, both sides update.
+1. `backend/schemas/analysis_schema.py` is the source of truth. Any change to `AnalyzeResponse` or `PostAnalysis` bumps `SCHEMA_VERSION`, updates `docs/API.md`, and regenerates `tests/fixtures/responses_v3/`.
+2. **Schema v3 is frozen.** v2 is withdrawn. After this, additive changes only (new optional fields), never renames or removals.
+3. Canonical signal names live in `backend/prompts/taxonomy.py`. The extension may hard-code that list for badges; if it changes, both sides update.
+4. **Field semantics go in the prompt text, not only in the schema.** Strict grammar mode does not show the model the schema descriptions: three models returned `manipulation_score: 0` for exactly this reason. If a field or an enum value has a meaning, write it in `backend/prompts/`.
 4. Every endpoint is documented in the live OpenAPI at `http://127.0.0.1:8000/docs`.
 
 ## Run
@@ -35,12 +36,17 @@ Extension: `chrome://extensions` → Developer mode → Load unpacked → `exten
 
 `ANALYZER_PROVIDER` = `nebius` (default, Token Factory, Qwen3-235B) | `gemini` (baseline) | `fake` (deterministic, offline). Per-request override: `?provider=`. Prompt versions: `?prompt_version=v0` (spec prompt, the "before") or `v1` (guarded, default).
 
-Validate a new Nebius key in one command:
+Validate the key and the whole pipeline in one command. Run it after any prompt change:
 
 ```bash
-.venv/bin/python scripts/check_nebius.py              # auth, model, strict JSON, one real analysis
+.venv/bin/python scripts/check_nebius.py --post spec_example
+.venv/bin/python scripts/check_nebius.py --post weidel_immigration --model openai/gpt-oss-120b
 .venv/bin/python scripts/check_nebius.py --list-models
 ```
+
+It prints the five blocks the client renders, per-step latency and cost, and warns when a quote is not verbatim, a label is outside the taxonomy, or a cited URL was not in the evidence.
+
+Measured on the benchmark posts: `openai/gpt-oss-120b` at `reasoning_effort=low` runs the two steps in 1.4 to 2.7 s; `Qwen/Qwen3-235B-A22B-Instruct-2507` takes 2.5 to 4 s; `Qwen/Qwen3-30B-A3B-Instruct-2507` took 27 s and is not usable. Reasoning models (GLM-Flash, DeepSeek-Flash, Nemotron-Lightning) spend the whole token budget thinking and fail.
 
 Two things to know when working on `nebius_service.py`:
 

@@ -1,0 +1,63 @@
+{
+  "schema_version": "3",
+  "analysis": {
+    "main_claim": {
+      "found": true,
+      "text": "Germany accepted 1.2 million migrants last year.",
+      "quote": "Germany accepted 1.2M migrants last year."
+    },
+    "claim_check": {
+      "verdict": "partially_supported",
+      "explanation": "The direction is reported by the sources but the scale and timeframe in the post are not.",
+      "sources": [
+        {
+          "title": "Migration report 2025 — Federal Office for Migration",
+          "url": "https://www.bamf.example/report-2025"
+        },
+        {
+          "title": "Fact check: how many people came to Germany last year?",
+          "url": "https://www.news.example/factcheck-migration"
+        }
+      ]
+    },
+    "missing_context": "The figure mixes asylum applications with all forms of immigration, and a large share were Ukrainian refugees under temporary protection.",
+    "rhetorical_signals": [
+      {
+        "name": "Loaded Language",
+        "evidence": "clearly doesn't care about German citizens"
+      }
+    ],
+    "speaker_context": {
+      "name": "Example Account",
+      "role": "",
+      "background": "Unknown author"
+    }
+  },
+  "evidence": [
+    {
+      "title": "Migration report 2025 — Federal Office for Migration",
+      "url": "https://www.bamf.example/report-2025",
+      "snippet": "In 2025 Germany registered 351,915 first-time asylum applications, alongside around 1.1 million arrivals under temporary protection.",
+      "provider": "brave"
+    },
+    {
+      "title": "Fact check: how many people came to Germany last year?",
+      "url": "https://www.news.example/factcheck-migration",
+      "snippet": "The 1.2 million figure conflates asylum seekers with Ukrainian refugees and EU free movement.",
+      "provider": "brave"
+    }
+  ],
+  "sources": [],
+  "transcript": null,
+  "steps": {
+    "extract_ms": 640,
+    "evidence_ms": 520,
+    "analyse_ms": 1220
+  },
+  "cached": false,
+  "latency_ms": 2380,
+  "provider": "nebius",
+  "model": "openai/gpt-oss-120b",
+  "cost_usd": 0.00053,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources."
+}

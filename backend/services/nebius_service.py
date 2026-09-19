@@ -1,10 +1,11 @@
 """Nebius Token Factory analyzer. The primary provider.
 
 OpenAI-compatible endpoint, so the official ``openai`` async client is used against
-``https://api.tokenfactory.nebius.com/v1/``. Structured output goes out as a strict
-``json_schema``; models whose serving engine rejects strict mode fall back to
-``json_object`` with the schema restated in the prompt, and the model id is remembered so
-the retry happens once per process, not once per request.
+``https://api.tokenfactory.nebius.com/v1/``. Both pipeline steps go out as strict
+``json_schema``; a model whose engine rejects strict mode falls back to ``json_object`` with
+the key list restated in the prompt, and the downgrade is remembered per model for the
+process. ``reasoning_effort`` is passed when configured (gpt-oss honours it: 3.7 s at "low"
+versus 4.6 s default on the benchmark post).
 """
 
 from __future__ import annotations
@@ -12,34 +13,22 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from typing import TypeVar
 
 from openai import APIStatusError, AsyncOpenAI, OpenAIError
+from pydantic import BaseModel
 
 from backend.config import Settings
+from backend.prompts.claim_prompt import SYSTEM_CLAIM, build_claim_prompt
 from backend.prompts.context_prompt import SYSTEM_PROMPTS, build_user_prompt
-from backend.schemas.analysis_schema import AnalysisResult, AnalyzeRequest, Source
-from backend.services.analyzer_base import AnalysisError, AnalysisOutcome
+from backend.schemas.analysis_schema import AnalysisBody, AnalyzeRequest, MainClaim, Source
+from backend.services.analyzer_base import AnalysisError, StepOutcome
 from backend.services.pricing import cost_usd
-from backend.services.schema_tools import (
-    RESPONSE_FORMAT_JSON_OBJECT,
-    response_format_strict,
-    to_strict_schema,
-)
+from backend.services.schema_tools import RESPONSE_FORMAT_JSON_OBJECT, response_format_strict, schema_reminder
 
 log = logging.getLogger(__name__)
 
-_SCHEMA_NAME = "context_guard_analysis"
-
-# Appended to the system prompt only on the json_object fallback path, where the engine
-# enforces "valid JSON" but not "this shape".
-_SCHEMA_REMINDER = (
-    "\nReturn a single JSON object with exactly these keys: post_summary (string), "
-    "author (string), author_background (string), communication_signals (array of objects "
-    "with name, evidence, confidence, description), logical_fallacies (array of objects with "
-    "name, evidence), indicators (object with strategic_intent, timing_note, factual_context, "
-    "is_division_tactic), manipulation_score (integer 0-100), cognitive_summary (string). "
-    "No prose outside the JSON."
-)
+M = TypeVar("M", bound=BaseModel)
 
 
 def _strict_mode_rejected(exc: APIStatusError) -> bool:
@@ -47,10 +36,11 @@ def _strict_mode_rejected(exc: APIStatusError) -> bool:
     if exc.status_code not in (400, 422, 501):
         return False
     blob = str(getattr(exc, "message", "") or exc).lower()
-    return any(
-        token in blob
-        for token in ("json_schema", "response_format", "structured output", "strict", "schema")
-    )
+    return any(t in blob for t in ("json_schema", "response_format", "structured output", "strict", "schema"))
+
+
+def _reasoning_rejected(exc: APIStatusError) -> bool:
+    return exc.status_code in (400, 422) and "reasoning" in str(getattr(exc, "message", "") or exc).lower()
 
 
 class NebiusAnalyzer:
@@ -61,47 +51,56 @@ class NebiusAnalyzer:
             raise AnalysisError("NEBIUS_API_KEY is not set")
         self.settings = settings
         self.model = settings.nebius_model
+        self.fast_model = settings.nebius_fast_model or settings.nebius_model
+        self.reasoning_effort = settings.nebius_reasoning_effort or None
         self.client = client or AsyncOpenAI(
             base_url=settings.nebius_base_url,
             api_key=settings.nebius_api_key,
             timeout=settings.nebius_timeout_seconds,
             max_retries=1,
         )
-        self._strict_schema = to_strict_schema(AnalysisResult.model_json_schema())
-        self._response_format = response_format_strict(_SCHEMA_NAME, AnalysisResult.model_json_schema())
-        self._use_strict = True
+        self._strict_ok: dict[str, bool] = {}
+        self._formats = {
+            MainClaim: response_format_strict("main_claim", MainClaim.model_json_schema()),
+            AnalysisBody: response_format_strict("post_analysis", AnalysisBody.model_json_schema()),
+        }
 
-    async def _call(self, system: str, user: str, strict: bool):
-        return await self.client.chat.completions.create(
-            model=self.model,
+    # ------------------------------------------------------------------ transport
+
+    async def _create(self, model: str, system: str, user: str, strict_format: dict | None, max_tokens: int):
+        kwargs: dict = dict(
+            model=model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-            response_format=self._response_format if strict else RESPONSE_FORMAT_JSON_OBJECT,
+            response_format=strict_format or RESPONSE_FORMAT_JSON_OBJECT,
             temperature=0.2,
-            max_tokens=1_600,
+            max_tokens=max_tokens,
         )
-
-    async def analyze(
-        self, req: AnalyzeRequest, sources: list[Source], prompt_version: str = "v1"
-    ) -> AnalysisOutcome:
-        system = SYSTEM_PROMPTS[prompt_version]
-        user = build_user_prompt(req, sources)
-
+        if self.reasoning_effort:
+            kwargs["reasoning_effort"] = self.reasoning_effort
         try:
-            if self._use_strict:
+            return await self.client.chat.completions.create(**kwargs)
+        except APIStatusError as exc:
+            if self.reasoning_effort and _reasoning_rejected(exc):
+                log.warning("%s rejected reasoning_effort; dropping it for this process", model)
+                self.reasoning_effort = None
+                kwargs.pop("reasoning_effort", None)
+                return await self.client.chat.completions.create(**kwargs)
+            raise
+
+    async def _structured(self, model: str, system: str, user: str, out: type[M], max_tokens: int) -> StepOutcome[M]:
+        strict_format = self._formats[out]
+        try:
+            if self._strict_ok.get(model, True):
                 try:
-                    completion = await self._call(system, user, strict=True)
+                    completion = await self._create(model, system, user, strict_format, max_tokens)
                 except APIStatusError as exc:
                     if not _strict_mode_rejected(exc):
                         raise
-                    log.warning(
-                        "%s rejected strict json_schema (%s); falling back to json_object for this process",
-                        self.model,
-                        exc.status_code,
-                    )
-                    self._use_strict = False
-                    completion = await self._call(system + _SCHEMA_REMINDER, user, strict=False)
+                    log.warning("%s rejected strict json_schema (%s); using json_object from now on", model, exc.status_code)
+                    self._strict_ok[model] = False
+                    completion = await self._create(model, system + schema_reminder(out), user, None, max_tokens)
             else:
-                completion = await self._call(system + _SCHEMA_REMINDER, user, strict=False)
+                completion = await self._create(model, system + schema_reminder(out), user, None, max_tokens)
         except asyncio.TimeoutError as exc:
             raise AnalysisError(f"Nebius timed out after {self.settings.nebius_timeout_seconds}s") from exc
         except OpenAIError as exc:
@@ -111,22 +110,21 @@ class NebiusAnalyzer:
             raise AnalysisError("Nebius returned no choices")
         choice = completion.choices[0]
         content = choice.message.content
+        finish = getattr(choice, "finish_reason", None)
         if not content:
-            reason = getattr(choice, "finish_reason", "unknown")
-            raise AnalysisError(f"Nebius returned empty content (finish_reason={reason})")
-        if getattr(choice, "finish_reason", None) == "length":
+            raise AnalysisError(f"Nebius returned empty content (finish_reason={finish})")
+        if finish == "length":
             raise AnalysisError("Nebius hit the token limit before closing the JSON object")
 
         try:
-            result = AnalysisResult.model_validate_json(content)
+            result = out.model_validate_json(content)
         except ValueError:
-            # Some models wrap the object in a fenced block or add a preamble.
             salvaged = _extract_json_object(content)
             if salvaged is None:
                 log.error("unparseable model output: %s", content[:500])
                 raise AnalysisError("Nebius returned JSON that does not match the schema") from None
             try:
-                result = AnalysisResult.model_validate(salvaged)
+                result = out.model_validate(salvaged)
             except ValueError as exc:
                 log.error("schema mismatch after salvage: %s", content[:500])
                 raise AnalysisError("Nebius returned JSON that does not match the schema") from exc
@@ -134,13 +132,24 @@ class NebiusAnalyzer:
         usage = completion.usage
         p_tok = int(getattr(usage, "prompt_tokens", 0) or 0)
         c_tok = int(getattr(usage, "completion_tokens", 0) or 0)
-        return AnalysisOutcome(
-            result=result,
-            model=self.model,
-            prompt_tokens=p_tok,
-            completion_tokens=c_tok,
-            cost_usd=cost_usd("nebius", self.model, p_tok, c_tok),
-        )
+        return StepOutcome(result=result, model=model, prompt_tokens=p_tok, completion_tokens=c_tok, cost_usd=cost_usd("nebius", model, p_tok, c_tok))
+
+    # ------------------------------------------------------------------ pipeline steps
+
+    async def extract_claim(self, req: AnalyzeRequest) -> StepOutcome[MainClaim]:
+        return await self._structured(self.fast_model, SYSTEM_CLAIM, build_claim_prompt(req), MainClaim, max_tokens=300)
+
+    async def analyse(
+        self,
+        req: AnalyzeRequest,
+        claim: MainClaim,
+        evidence: list[Source],
+        background: list[Source],
+        prompt_version: str = "v1",
+    ) -> StepOutcome[AnalysisBody]:
+        system = SYSTEM_PROMPTS[prompt_version]
+        user = build_user_prompt(req, claim, evidence, background)
+        return await self._structured(self.model, system, user, AnalysisBody, max_tokens=900)
 
 
 def _extract_json_object(text: str) -> dict | None:

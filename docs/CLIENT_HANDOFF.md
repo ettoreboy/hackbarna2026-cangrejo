@@ -1,29 +1,50 @@
 # Client handoff — Chrome extension
 
-Written for: Diana, owning `extension/` from Saturday 19 Sept.
+Written for: Diana, owning `extension/`.
 
-## What already works
+## Read this first
 
-Load `extension/` unpacked in Chrome and open x.com. You get:
+The response shape changed. **Schema v3 replaces v2.** If you already started on the v2 drawer, stop and re-read `docs/API.md`: there is no manipulation score, no post summary, no intent field. The product is now claim-first.
 
-- **Button injection**: `content/content.js` watches the timeline with a MutationObserver and adds a "🛡️ Context" button to every tweet's action bar. Every X selector is in the `SELECTORS` map at the top of the file. If X renames a `data-testid`, that map is the only place to fix.
-- **Scraping**: on click it reads the tweet text, display name, `@handle`, canonical status URL, and sends `{type: "ANALYZE", payload}` to the service worker.
+One post produces five blocks, in this reading order:
+
+```
+MAIN CLAIM          the single verifiable factual claim, or "none found"
+CLAIM CHECK         supported / partially supported / unsupported / unverifiable / no factual claim
+                    + one-sentence explanation + source links
+MISSING CONTEXT     one or two sentences, or absent
+RHETORICAL SIGNALS  badges, each with the exact words from the post that triggered it
+SPEAKER CONTEXT     name · role, one or two neutral sentences
+```
+
+The verdict is about the claim, never about the post. The UI must not say the post is true or false.
+
+## What already works in `extension/`
+
+- **Button injection**: `content/content.js` watches the timeline with a MutationObserver and adds a "🛡️ Context" button to every tweet's action bar. Every X selector is in the `SELECTORS` map at the top of the file; a DOM change is a one-place fix.
+- **Scraping**: on click it reads the tweet text, display name, `@handle` and canonical status URL, and sends `{type: "ANALYZE", payload}` to the service worker.
 - **Service worker**: `background/background.js` POSTs to `/api/v1/analyze` on the backend URL from `chrome.storage.sync.backendUrl` (default `http://127.0.0.1:8000`) and returns `{ok, data}` or `{ok:false, error}`.
-- **Drawer**: `content/overlay.js` renders a left-side drawer inside a Shadow DOM (X's CSS cannot leak in). Loading, error, and result states exist. Esc and ✕ close it.
-- **Styles**: only the button lives in `styles/overlay.css`. Drawer CSS is a string inside `overlay.js`.
-
-The drawer currently renders **schema v1**. The backend now returns **schema v2**. That mismatch is task 1.
+- **Drawer**: `content/overlay.js` renders a left drawer inside a Shadow DOM so X's CSS cannot leak in. Loading, error and result states exist, Esc and ✕ close it. **Its result rendering is v2 and must be rewritten.**
 
 ## Run the backend with no keys
 
 ```bash
-cd <repo>
 uv venv .venv --python 3.11 && uv pip install --python .venv/bin/python -r requirements.txt
 ANALYZER_PROVIDER=fake .venv/bin/uvicorn backend.main:app --reload
 curl -s http://127.0.0.1:8000/api/v1/health
 ```
 
-Fake mode returns deterministic responses. Tweets by `@Alice_Weidel` come back high, `@example_centrist` medium, `@destatis` low, `@troll_account` "Unknown author", anything else high. The same JSON files are in `tests/fixtures/responses_v2/` so you can also develop the drawer against static data.
+Fake mode is deterministic and covers every branch you need to render:
+
+| Handle to post as | You get |
+| --- | --- |
+| `example_migrants` | claim found, `partially_supported`, two sources, one signal |
+| `destatis` | claim found, `supported`, one source, no signals |
+| `Alice_Weidel` | claim found, `unverifiable` (no evidence), four signals, Wikipedia speaker |
+| `example_left_mp` | no claim, `no_factual_claim`, three signals |
+| `troll_account` | no claim, `Unknown author` speaker |
+
+The same payloads are static files in `tests/fixtures/responses_v3/` if you prefer to build against JSON without running anything.
 
 To point the extension at a teammate's backend, in the service-worker console:
 
@@ -33,51 +54,44 @@ chrome.storage.sync.set({ backendUrl: "http://192.168.x.y:8000" })
 
 ## Your tasks, in priority order
 
-### 1. Render schema v2 in the drawer (Saturday afternoon)
+### 1. Render schema v3 (the whole job)
 
-Contract: `docs/API.md`, section "Field guide for rendering". Concretely in `overlay.js` `showResult`:
+Rewrite `showResult` in `overlay.js` against the field guide in `docs/API.md`. The cases that must look right:
 
-- `post_summary` first, as plain text under the post block.
-- `score_band` is the hero element, colour-banded. Number small beside it.
-- `communication_signals[]` badges: `name` as label, `evidence` as a quote under the badge or in the hover tip together with `description`. Hide Dog Whistle / Scapegoating / Dehumanization badges with `confidence < 0.6`. Names starting `Other: ` render muted.
-- `logical_fallacies[]` chips with `evidence` on hover.
-- `indicators.strategic_intent`, then `timing_note` small (skip when "No timing signal identified"), then `factual_context`.
-- `indicators.is_division_tactic` → pill.
-- `cognitive_summary` as the closing "Pattern to remember" section.
-- Footer: provider, model, latency or "cached", disclaimer.
-- Remove all references to `tactics_detected`, `strategic_intent`, `factual_context`, `is_division_tactic` at the top level; they moved.
+- **No claim.** `main_claim.found === false`: say "No checkable factual claim in this post" and render the verdict pill as neutral grey, not as a failure.
+- **Unverifiable.** Common and not an error. Grey pill, empty source list, explanation still shown.
+- **Empty `missing_context`** and **empty `rhetorical_signals`**: hide those blocks entirely rather than showing an empty heading.
+- **`Unknown author`**: show it plainly and hide the background sources list.
+- **`Other: ` prefixed signal names**: render muted, they are outside the known vocabulary.
+- Every signal badge must show its `evidence` quote, under the badge or on hover. That quote is the product's whole credibility; do not drop it.
 
-Verify with all five fixture files. `text_unknown_author.json` must hide sources and show "Unknown author".
+Canonical signal names are in `backend/prompts/taxonomy.py` if you want fixed colours or icons per name.
 
-### 2. Video posts (Saturday evening; backend endpoint lands Saturday night, fake mode serves it earlier)
+### 2. Video posts (backend endpoint lands Sunday morning)
 
-- In `content.js`, detect `article.querySelector("video")`. If present, the button reads "🛡️ Transcribe & Context" and sends `{type: "ANALYZE_MEDIA", payload: {post_url, author_handle, author_name, platform: "x"}}`.
-- In `background.js`, route `ANALYZE_MEDIA` to `POST /api/v1/analyze-media`. Raise the fetch timeout to 45 s for this call.
-- In `overlay.js`, staged loading on a timer: "Downloading audio" → "Transcribing (SLNG, EU region)" → "Analysing" at roughly 0 s / 4 s / 8 s. On result, show the `transcript.text` in the post block (label "Transcript · 23 s · en") above the analysis.
-- Fixture: `tests/fixtures/responses_v2/media_example.json`.
+- In `content.js`, detect `article.querySelector("video")`. If present the button reads "🛡️ Transcribe & Context" and sends `{type: "ANALYZE_MEDIA", payload: {post_url, author_handle, author_name, platform: "x"}}`.
+- In `background.js`, route that to `POST /api/v1/analyze-media` with a 45 s timeout.
+- In `overlay.js`, staged loading on a timer: "Downloading audio" → "Transcribing (SLNG, EU region)" → "Analysing", roughly 0 s / 4 s / 8 s. On result show `transcript.text` above the analysis, labelled "Transcript · 23 s · en".
+- Fixture: `tests/fixtures/responses_v3/media_example.json`.
 
-### 3. Polish (Sunday morning)
+### 3. Polish
 
-- Error states: backend unreachable, 502 with detail, 413 video too long ("Videos over 60 s are not supported yet").
-- Button state reset after close; re-click re-opens without refetch (backend caches anyway).
-- Keyboard: Esc closes, focus returns to the button.
-- Check at 1280 px and 1920 px widths; drawer must not cover the tweet being read on wide screens (consider docking right if the tweet is left of centre).
+Error states (backend unreachable, 502 with detail, 413 "Videos over 60 s are not supported yet"), button state reset after close, Esc returns focus to the button, check 1280 px and 1920 px. On wide screens consider docking right when the tweet sits left of centre.
 
-### 4. Demo recording (Sunday 09:30)
+### 4. Demo recording, Sunday 09:30
 
-60–90 s screen recording: scroll timeline → click on a text post → drawer → click on a video post → transcript → drawer. Save as `docs/demo.mp4` or a public link in README.
+60 to 90 seconds: scroll the timeline, click a text post, show the drawer, click a video post, show transcript then drawer. Save as `docs/demo.mp4` or a public link in the README.
 
 ## Things to know
 
 - No X API is used and none should be. Everything comes from the DOM of the tweet on screen.
-- Instagram is out of scope for this hackathon.
-- Do not put any API key in the extension. The backend holds all keys.
-- The canonical label list for badges is in `backend/prompts/taxonomy.py`. Copying it into a JS constant is fine.
-- Backend owner: Ettore. Anything unclear in the contract, ask before guessing; changing `docs/API.md` is a two-person decision.
+- Instagram is out of scope.
+- No API key goes in the extension. The backend holds all keys.
+- Backend owner: Ettore. `docs/API.md` is the contract; changing it is a two-person decision.
 
 ## Definition of done
 
-- Drawer renders every field in `docs/API.md` for all fixture files.
-- Text and video paths work end to end against a teammate's backend with real keys.
+- Every field in `docs/API.md` renders, and all six fake-mode handles look right.
+- Text and video paths work against a backend with real keys.
 - Demo recording exists.
-- `extension/` has no console errors on x.com.
+- No console errors on x.com.

@@ -15,6 +15,7 @@ from backend.main import create_app
 from backend.services.fake_service import FakeAnalyzer
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "posts.json").read_text())
+WIKI_RE = r"https://en\.wikipedia\.org/api/rest_v1/page/summary/.*"
 
 
 def make_settings(**overrides: Any) -> Settings:
@@ -27,6 +28,25 @@ def make_settings(**overrides: Any) -> Settings:
     }
     base.update(overrides)
     return Settings(_env_file=None, **base)  # type: ignore[call-arg]
+
+
+def wiki_ok(title: str, extract: str) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "type": "standard",
+            "title": title,
+            "extract": extract,
+            "content_urls": {"desktop": {"page": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"}},
+        },
+    )
+
+
+def brave_ok(*results: tuple[str, str, str]) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={"web": {"results": [{"title": t, "url": u, "description": d} for t, u, d in results]}},
+    )
 
 
 class _lifespan:

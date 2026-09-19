@@ -71,8 +71,8 @@ def create_app(settings: Settings | None = None, analyzers: dict[str, Analyzer] 
 
     app = FastAPI(
         title="ContextGuard Social API",
-        version=f"0.2.0 (schema v{SCHEMA_VERSION})",
-        description="Structured political-context and manipulation-signal analysis for social posts.",
+        version=f"0.3.0 (schema v{SCHEMA_VERSION})",
+        description="Claim-first analysis of social posts: main claim, evidence check, missing context, rhetorical signals, speaker context.",
         lifespan=lifespan,
     )
     app.add_middleware(

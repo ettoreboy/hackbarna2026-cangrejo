@@ -1,13 +1,19 @@
-"""Canonical labels for communication signals and logical fallacies.
+"""Canonical labels for rhetorical signals.
 
 Single source of truth used by the prompt builder, the schema normaliser, tests, the eval
 scripts and the fine-tune dataset generator. Definitions and detection cues live in
 docs/TECHNIQUES.md; keep the two in sync.
+
+v3 merges manipulation tactics and logical fallacies into one list, ``SIGNALS``: the client
+renders one row of badges and the model picks from one vocabulary.
 """
 
 from __future__ import annotations
 
+import re
+
 TACTICS: tuple[str, ...] = (
+    "Loaded Language",
     "Outrage Farming",
     "Scapegoating",
     "Fear-mongering",
@@ -39,13 +45,18 @@ FALLACIES: tuple[str, ...] = (
     "Motte and Bailey",
 )
 
-# Labels with reputational risk if wrong: the UI hides them below this confidence.
-HIGH_RISK_TACTICS: frozenset[str] = frozenset({"Dog Whistle", "Scapegoating", "Dehumanization"})
-HIGH_RISK_MIN_CONFIDENCE = 0.6
+SIGNALS: tuple[str, ...] = TACTICS + FALLACIES
 
-# Accepted spellings/synonyms → canonical. Lower-cased keys.
+# Labels with reputational risk if wrong; the client may render them more cautiously.
+HIGH_RISK_SIGNALS: frozenset[str] = frozenset({"Dog Whistle", "Scapegoating", "Dehumanization"})
+
+# Accepted spellings/synonyms → canonical. Lower-cased, ASCII-dashed keys.
 _SYNONYMS: dict[str, str] = {
-    # tactics
+    "loaded words": "Loaded Language",
+    "loaded terms": "Loaded Language",
+    "emotive language": "Loaded Language",
+    "emotionally charged language": "Loaded Language",
+    "charged language": "Loaded Language",
     "outrage bait": "Outrage Farming",
     "rage bait": "Outrage Farming",
     "ragebait": "Outrage Farming",
@@ -58,7 +69,9 @@ _SYNONYMS: dict[str, str] = {
     "in-group/out-group": "Us-vs-Them Framing",
     "in-group vs out-group": "Us-vs-Them Framing",
     "us vs them": "Us-vs-Them Framing",
+    "us vs. them": "Us-vs-Them Framing",
     "us-vs-them": "Us-vs-Them Framing",
+    "us versus them": "Us-vs-Them Framing",
     "othering": "Us-vs-Them Framing",
     "tribalism": "Us-vs-Them Framing",
     "dehumanisation": "Dehumanization",
@@ -70,7 +83,6 @@ _SYNONYMS: dict[str, str] = {
     "whataboutery": "Whataboutism",
     "tu quoque": "Ad Hominem",
     "manufactured consensus": "Astroturfing",
-    # fallacies
     "false dichotomy": "False Dilemma",
     "either/or": "False Dilemma",
     "black-and-white thinking": "False Dilemma",
@@ -92,7 +104,18 @@ _SYNONYMS: dict[str, str] = {
     "appeal to pity": "Appeal to Emotion",
 }
 
-_CANONICAL_LOWER: dict[str, str] = {t.lower(): t for t in TACTICS + FALLACIES}
+_CANONICAL_LOWER: dict[str, str] = {t.lower(): t for t in SIGNALS}
+
+# Models emit typographic dashes and non-breaking spaces (gpt-oss returned U+2011 in
+# "Fear‑mongering"); fold them before lookup so the label still matches.
+_DASHES = re.compile(r"[‐‑‒–—―−]")
+_SPACES = re.compile(r"[   \s]+")
+
+
+def _fold(name: str) -> str:
+    key = _DASHES.sub("-", name)
+    key = _SPACES.sub(" ", key)
+    return key.strip().strip('"').strip(".").lower()
 
 
 def normalize_label(name: str) -> str:
@@ -101,7 +124,7 @@ def normalize_label(name: str) -> str:
     Unknown labels are kept but prefixed with "Other: " so they are visible in eval output
     and can be promoted to the canonical list later.
     """
-    key = name.strip().strip('"').lower()
+    key = _fold(name)
     if key.startswith("other:"):
         key = key[6:].strip()
     if key in _CANONICAL_LOWER:
@@ -112,13 +135,12 @@ def normalize_label(name: str) -> str:
 
 
 def is_canonical(name: str) -> bool:
-    return name in TACTICS or name in FALLACIES
+    return name in SIGNALS
 
 
 def prompt_block() -> str:
     """The allowed-vocabulary block inserted into the system prompt."""
     return (
-        "ALLOWED communication_signals names: " + "; ".join(TACTICS) + ".\n"
-        "ALLOWED logical_fallacies names: " + "; ".join(FALLACIES) + ".\n"
+        "ALLOWED rhetorical_signals names: " + "; ".join(SIGNALS) + ".\n"
         'Use these spellings exactly. If a pattern is not listed, use "Other: <short name>".'
     )

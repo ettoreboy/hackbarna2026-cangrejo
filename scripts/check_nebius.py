@@ -1,18 +1,13 @@
 #!/usr/bin/env python
-"""Validate a Nebius Token Factory key end to end. Run this the moment the key arrives.
+"""Validate a Nebius key and the whole claim-first pipeline. Run it after any prompt change.
 
     .venv/bin/python scripts/check_nebius.py
-    .venv/bin/python scripts/check_nebius.py --model openai/gpt-oss-120b
+    .venv/bin/python scripts/check_nebius.py --post spec_example
+    .venv/bin/python scripts/check_nebius.py --model Qwen/Qwen3-235B-A22B-Instruct-2507
     .venv/bin/python scripts/check_nebius.py --list-models
 
-Checks, in order:
-  1. the key authenticates and models can be listed
-  2. the configured model exists
-  3. strict json_schema structured output works on it
-  4. one real analysis of the benchmark post parses into the schema
-  5. reports latency, tokens and cost
-
-Exit code is non-zero if any check fails, so it can gate the eval runs.
+Checks the key, the model, strict structured output, and both pipeline steps, then prints the
+five blocks the client renders plus per-step latency and cost. Non-zero exit on any failure.
 """
 
 from __future__ import annotations
@@ -24,37 +19,51 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+import httpx  # noqa: E402
 
 from backend.config import Settings  # noqa: E402
-from backend.schemas.analysis_schema import AnalyzeRequest, Source  # noqa: E402
+from backend.schemas.analysis_schema import AnalyzeRequest  # noqa: E402
 from backend.services.analyzer_base import AnalysisError  # noqa: E402
 from backend.services.nebius_service import NebiusAnalyzer  # noqa: E402
+from backend.services.pipeline import run_pipeline  # noqa: E402
 from backend.services.pricing import NEBIUS_PRICES  # noqa: E402
 
 OK, BAD, INFO = "  ok  ", " FAIL ", " .... "
-FIXTURES = json.loads((Path(__file__).resolve().parent.parent / "tests/fixtures/posts.json").read_text())
+FIXTURES = json.loads((ROOT / "tests/fixtures/posts.json").read_text())
 
 
 def line(mark: str, text: str) -> None:
     print(f"[{mark}] {text}", flush=True)
 
 
+def block(title: str, body: str) -> None:
+    print(f"\n{title}\n{body}")
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", help="override NEBIUS_MODEL for this run")
-    ap.add_argument("--list-models", action="store_true", help="print every model id the key can reach, then exit")
-    ap.add_argument("--fixture", default="weidel_immigration", help="which fixture post to analyse")
+    ap.add_argument("--model", help="override NEBIUS_MODEL")
+    ap.add_argument("--fast-model", help="override NEBIUS_FAST_MODEL (claim extraction)")
+    ap.add_argument("--post", default="weidel_immigration", help=f"one of {', '.join(FIXTURES)}")
+    ap.add_argument("--prompt-version", default="v1", choices=["v0", "v1"])
+    ap.add_argument("--list-models", action="store_true")
     args = ap.parse_args()
 
     settings = Settings()  # type: ignore[call-arg]
+    update = {}
     if args.model:
-        settings = settings.model_copy(update={"nebius_model": args.model})
+        update["nebius_model"] = args.model
+    if args.fast_model:
+        update["nebius_fast_model"] = args.fast_model
+    if update:
+        settings = settings.model_copy(update=update)
 
     if not settings.nebius_configured:
         line(BAD, "NEBIUS_API_KEY is not set. Put it in .env and re-run.")
         return 1
-    line(OK, f"key present, base_url {settings.nebius_base_url}")
 
     try:
         analyzer = NebiusAnalyzer(settings)
@@ -62,10 +71,8 @@ async def main() -> int:
         line(BAD, str(exc))
         return 1
 
-    # 1. auth + model catalogue
     try:
-        listing = await analyzer.client.models.list()
-        ids = sorted(m.id for m in listing.data)
+        ids = sorted(m.id for m in (await analyzer.client.models.list()).data)
     except Exception as exc:
         line(BAD, f"could not list models: {exc}")
         return 1
@@ -74,68 +81,66 @@ async def main() -> int:
     if args.list_models:
         for mid in ids:
             price = NEBIUS_PRICES.get(mid)
-            tag = f"  ${price[0]}/${price[1]} per 1M" if price else ""
-            print(f"    {mid}{tag}")
+            print(f"    {mid}" + (f"  ${price[0]}/${price[1]} per 1M" if price else ""))
         return 0
 
-    # 2. configured model present
-    if settings.nebius_model in ids:
-        line(OK, f"model {settings.nebius_model} is available")
-    else:
-        line(BAD, f"model {settings.nebius_model} not in the catalogue")
-        near = [m for m in ids if m.split("/")[-1][:6].lower() in settings.nebius_model.lower()][:8]
-        if near:
-            print("    closest ids:", ", ".join(near))
-        return 1
+    for label, model in (("analysis", analyzer.model), ("claim extraction", analyzer.fast_model)):
+        if model not in ids:
+            line(BAD, f"{label} model {model} is not in the catalogue")
+            return 1
+    line(OK, f"models available: {analyzer.fast_model} (step 1), {analyzer.model} (step 3)")
+    if analyzer.reasoning_effort:
+        line(INFO, f"reasoning_effort={analyzer.reasoning_effort}")
+    if not settings.brave_configured:
+        line(INFO, "no BRAVE_API_KEY: no evidence will be fetched, so the verdict will be 'unverifiable'")
 
-    if settings.nebius_model not in NEBIUS_PRICES:
-        line(
-            INFO,
-            f"no price for {settings.nebius_model}; cost column will be empty. "
-            "Set NEBIUS_PRICES to fill it (see backend/services/pricing.py).",
-        )
-
-    # 3 + 4. a real structured analysis
-    req = AnalyzeRequest(**FIXTURES[args.fixture]["request"])
-    sources = [
-        Source(
-            title="Alice Weidel",
-            url="https://en.wikipedia.org/wiki/Alice_Weidel",
-            snippet="Alice Weidel is a German politician and co-leader of the AfD.",
-            provider="wikipedia",
-        )
-    ]
+    req = AnalyzeRequest(**FIXTURES[args.post]["request"])
     started = time.perf_counter()
-    try:
-        outcome = await analyzer.analyze(req, sources)
-    except AnalysisError as exc:
-        line(BAD, f"analysis failed: {exc}")
-        return 1
+    async with httpx.AsyncClient(follow_redirects=True) as http:
+        try:
+            resp = await run_pipeline(req, analyzer, http, settings, prompt_version=args.prompt_version)
+        except AnalysisError as exc:
+            line(BAD, f"pipeline failed: {exc}")
+            return 1
     elapsed_ms = (time.perf_counter() - started) * 1000
 
-    mode = "strict json_schema" if analyzer._use_strict else "json_object fallback"
-    line(OK, f"structured output works via {mode}")
+    mode = "strict json_schema" if all(analyzer._strict_ok.get(m, True) for m in (analyzer.model, analyzer.fast_model)) else "json_object fallback"
+    line(OK, f"pipeline completed via {mode}")
 
-    a = outcome.result
-    cost = f"${outcome.cost_usd:.5f}" if outcome.cost_usd is not None else "unpriced"
-    line(OK, f"analysis parsed: band={a.score_band} score={a.manipulation_score}")
-    print(f"\n    latency   {elapsed_ms:.0f} ms")
-    print(f"    tokens    {outcome.prompt_tokens} in / {outcome.completion_tokens} out")
-    print(f"    cost      {cost}")
-    print(f"\n    summary   {a.post_summary}")
-    print(f"    author    {a.author_background[:120]}")
-    print(f"    signals   {', '.join(f'{s.name} ({s.confidence:.2f})' for s in a.communication_signals) or 'none'}")
-    print(f"    fallacies {', '.join(f.name for f in a.logical_fallacies) or 'none'}")
-    print(f"    intent    {a.indicators.strategic_intent}")
-    print(f"    timing    {a.indicators.timing_note}")
-    print(f"    lesson    {a.cognitive_summary[:160]}")
+    a = resp.analysis
+    print("\n" + "=" * 68)
+    print(f"POST ANALYSIS — @{req.author_handle} ({args.post}, prompt {args.prompt_version})")
+    print("=" * 68)
+    if a.main_claim.found:
+        block("MAIN CLAIM", f'  "{a.main_claim.text}"\n  quoted: "{a.main_claim.quote}"')
+    else:
+        block("MAIN CLAIM", "  none found (no checkable factual claim)")
+    src = "\n".join(f"  - {s.title} — {s.url}" for s in a.claim_check.sources) or "  (none cited)"
+    block("CLAIM CHECK", f"  {a.claim_check.verdict.upper()}\n  {a.claim_check.explanation}\n  Sources:\n{src}")
+    block("MISSING CONTEXT", f"  {a.missing_context or '(none)'}")
+    sig = "\n".join(f'  [{s.name}]  "{s.evidence}"' for s in a.rhetorical_signals) or "  (none)"
+    block("RHETORICAL SIGNALS", sig)
+    sp = a.speaker_context
+    block("SPEAKER CONTEXT", f"  {sp.name}" + (f" · {sp.role}" if sp.role else "") + f"\n  {sp.background}")
 
-    uncited = [s.name for s in a.communication_signals if not s.evidence.strip()]
-    if uncited:
-        line(INFO, f"signals with no quoted evidence: {uncited}")
-    off_list = [s.name for s in a.communication_signals if s.name.startswith("Other: ")]
-    if off_list:
-        line(INFO, f"labels outside the taxonomy: {off_list}")
+    cost = f"${resp.cost_usd:.5f}" if resp.cost_usd is not None else "unpriced"
+    print(f"\n    total {elapsed_ms:.0f} ms  =  claim {resp.steps.extract_ms} + evidence {resp.steps.evidence_ms} + analysis {resp.steps.analyse_ms}")
+    print(f"    cost {cost} · evidence {len(resp.evidence)} results · background {len(resp.sources)} sources")
+
+    problems = []
+    if a.main_claim.found and a.main_claim.quote and a.main_claim.quote not in req.post_text:
+        problems.append("claim quote is not verbatim from the post")
+    for s in a.rhetorical_signals:
+        if s.evidence and s.evidence not in req.post_text:
+            problems.append(f"signal {s.name} quote is not verbatim")
+        if s.name.startswith("Other: "):
+            problems.append(f"label outside the taxonomy: {s.name}")
+    evidence_urls = {e.url.rstrip('/') for e in resp.evidence}
+    for c in a.claim_check.sources:
+        if c.url.rstrip("/") not in evidence_urls:
+            problems.append(f"cited URL was not in the evidence: {c.url}")
+    for p in problems:
+        line(INFO, p)
 
     print()
     line(OK, "all checks passed")

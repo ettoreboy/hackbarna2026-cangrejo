@@ -1,0 +1,45 @@
+{
+  "schema_version": "3",
+  "analysis": {
+    "main_claim": {
+      "found": false,
+      "text": "",
+      "quote": ""
+    },
+    "claim_check": {
+      "verdict": "no_factual_claim",
+      "explanation": "The post makes no checkable factual claim.",
+      "sources": []
+    },
+    "missing_context": "",
+    "rhetorical_signals": [
+      {
+        "name": "Fear-mongering",
+        "evidence": "the elites want you poor and scared"
+      },
+      {
+        "name": "Emotional Bait",
+        "evidence": "wake up sheeple"
+      }
+    ],
+    "speaker_context": {
+      "name": "Totally Neutral Account",
+      "role": "",
+      "background": "Unknown author"
+    }
+  },
+  "evidence": [],
+  "sources": [],
+  "transcript": null,
+  "steps": {
+    "extract_ms": 600,
+    "evidence_ms": 0,
+    "analyse_ms": 830
+  },
+  "cached": false,
+  "latency_ms": 1440,
+  "provider": "nebius",
+  "model": "openai/gpt-oss-120b",
+  "cost_usd": 0.00053,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources."
+}

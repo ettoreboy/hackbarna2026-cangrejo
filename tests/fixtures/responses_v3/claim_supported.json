@@ -1,0 +1,55 @@
+{
+  "schema_version": "3",
+  "analysis": {
+    "main_claim": {
+      "found": true,
+      "text": "Consumer prices in Germany rose 2.2% year on year in August 2026 according to preliminary figures.",
+      "quote": "Consumer prices in Germany rose 2.2% year on year in August 2026"
+    },
+    "claim_check": {
+      "verdict": "supported",
+      "explanation": "The figure matches the preliminary release cited.",
+      "sources": [
+        {
+          "title": "Consumer price index, August 2026 — Destatis",
+          "url": "https://www.destatis.example/cpi-august-2026"
+        }
+      ]
+    },
+    "missing_context": "",
+    "rhetorical_signals": [],
+    "speaker_context": {
+      "name": "Federal Statistical Office",
+      "role": "Government agency",
+      "background": "The Federal Statistical Office is the federal statistical agency of Germany, known as Destatis."
+    }
+  },
+  "evidence": [
+    {
+      "title": "Consumer price index, August 2026 — Destatis",
+      "url": "https://www.destatis.example/cpi-august-2026",
+      "snippet": "Consumer prices rose 2.2% year on year in August 2026 according to preliminary results.",
+      "provider": "brave"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Federal Statistical Office of Germany",
+      "url": "https://en.wikipedia.org/wiki/Federal_Statistical_Office_of_Germany",
+      "snippet": "The Federal Statistical Office is the federal statistical agency of Germany, known as Destatis.",
+      "provider": "wikipedia"
+    }
+  ],
+  "transcript": null,
+  "steps": {
+    "extract_ms": 420,
+    "evidence_ms": 480,
+    "analyse_ms": 1150
+  },
+  "cached": false,
+  "latency_ms": 2050,
+  "provider": "nebius",
+  "model": "openai/gpt-oss-120b",
+  "cost_usd": 0.00053,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources."
+}

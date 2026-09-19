@@ -1,8 +1,18 @@
-# API contract (schema v2)
+# API contract (schema v3, claim-first)
+
+**v3 replaces v2. v2 is withdrawn; do not render it.** The response no longer carries a manipulation score, a post summary or an intent field. It carries one extracted claim, a verdict on that claim, missing context, rhetorical signals, and speaker context.
 
 Base URL in development: `http://127.0.0.1:8000`. Live OpenAPI: `/docs`.
 
 CORS allows origins `chrome-extension://<32 lowercase letters>` and `http(s)://localhost` / `127.0.0.1` on any port. Only `content-type` may be sent as a custom header.
+
+## What the backend does with one post
+
+1. **Claim extraction.** A model reads the post and returns the single main factual claim, restated as a standalone sentence plus the verbatim words it came from. Opinions, predictions and rhetoric are not claims. A post can legitimately have none.
+2. **Evidence.** The claim text is searched on the web. Skipped when there is no claim.
+3. **Analysis.** A second model call checks the claim against that evidence only, names what context is missing, lists rhetorical signals with the words that triggered them, and summarises who the author is from Wikipedia.
+
+Measured live on Nebius `openai/gpt-oss-120b`: 1.4 to 2.7 s end to end.
 
 ## Offline mode
 
@@ -10,117 +20,128 @@ CORS allows origins `chrome-extension://<32 lowercase letters>` and `http(s)://l
 ANALYZER_PROVIDER=fake uvicorn backend.main:app --reload
 ```
 
-Returns deterministic v2 responses with no API keys. Handles `Alice_Weidel` (high), `example_centrist` (medium), `destatis` (low), `troll_account` (unknown author) hit specific fixtures; any other handle gets the high profile. The same payloads are saved in `tests/fixtures/responses_v2/`.
+Deterministic v3 responses, no API keys. Handles `Alice_Weidel`, `example_migrants`, `example_left_mp`, `example_centrist`, `destatis` and `troll_account` hit specific fixtures. The same payloads are in `tests/fixtures/responses_v3/`.
 
 ## `GET /api/v1/health`
 
 ```json
-{ "status": "ok", "schema_version": "2", "providers": ["fake"], "default_provider": "fake", "brave_configured": false, "slng_configured": false }
+{ "status": "ok", "schema_version": "3", "providers": ["fake"], "default_provider": "fake", "brave_configured": false, "slng_configured": false }
 ```
 
 ## `POST /api/v1/analyze`
 
-Text posts. Query params, all optional: `provider=nebius|gemini|fake`, `prompt_version=v0|v1`, `nocache=true`.
+Query params, all optional: `provider=nebius|gemini|fake`, `prompt_version=v0|v1`, `nocache=true`.
 
-Request:
+Request (unchanged from v2):
 
 ```json
 {
-  "author_handle": "Alice_Weidel",
-  "author_name": "Alice Weidel",
-  "post_text": "Every day more illegal migrants pour over our borders ...",
+  "author_handle": "example_migrants",
+  "author_name": "Example Account",
+  "post_text": "Germany accepted 1.2M migrants last year. This government clearly doesn't care about German citizens.",
   "platform": "x",
-  "post_url": "https://x.com/Alice_Weidel/status/1000000000000000001"
+  "post_url": "https://x.com/example/status/1000000000000000001"
 }
 ```
 
-`author_handle` may carry a leading `@`; the server strips it. `post_text` 1–8000 chars. `post_url` optional.
-
-Response (`tests/fixtures/responses_v2/text_high.json` is the full example):
+Response, abridged. Full example: `tests/fixtures/responses_v3/claim_partially_supported.json`.
 
 ```json
 {
-  "schema_version": "2",
+  "schema_version": "3",
   "analysis": {
-    "post_summary": "The author links a social problem to one group and demands an immediate binary choice.",
-    "author": "Alice Weidel",
-    "author_background": "Alice Elisabeth Weidel is a German politician who has served as co-leader of ...",
-    "communication_signals": [
-      { "name": "Outrage Farming", "evidence": "pour over our borders", "confidence": 0.85, "description": "Emotionally charged imagery chosen to trigger sharing." },
-      { "name": "Scapegoating", "evidence": "illegal migrants", "confidence": 0.9, "description": "Attributes a complex problem to one group as the sole cause." }
-    ],
-    "logical_fallacies": [
-      { "name": "False Dilemma", "evidence": "Either we" }
-    ],
-    "indicators": {
-      "strategic_intent": "Mobilize the base by naming a culprit and a deadline.",
-      "timing_note": "No timing signal identified.",
-      "factual_context": "The causal link asserted is not supported by any cited data.",
-      "is_division_tactic": true
+    "main_claim": {
+      "found": true,
+      "text": "Germany accepted 1.2 million migrants last year.",
+      "quote": "Germany accepted 1.2M migrants last year."
     },
-    "manipulation_score": 85,
-    "cognitive_summary": "Culprit plus deadline plus binary choice is the standard mobilisation triad. ..."
+    "claim_check": {
+      "verdict": "partially_supported",
+      "explanation": "The direction is reported by the sources but the scale and timeframe in the post are not.",
+      "sources": [{ "title": "Migration report 2025", "url": "https://www.bamf.example/report-2025" }]
+    },
+    "missing_context": "The figure mixes asylum applications with all forms of immigration, and a large share were Ukrainian refugees under temporary protection.",
+    "rhetorical_signals": [
+      { "name": "Loaded Language", "evidence": "clearly doesn't care about German citizens" }
+    ],
+    "speaker_context": { "name": "Example Account", "role": "", "background": "Unknown author" }
   },
-  "score_band": "high",
-  "sources": [
-    { "title": "Alice Weidel", "url": "https://en.wikipedia.org/wiki/Alice_Weidel", "snippet": "...", "provider": "wikipedia" }
-  ],
+  "evidence": [ { "title": "...", "url": "...", "snippet": "...", "provider": "brave" } ],
+  "sources":  [ { "title": "...", "url": "...", "snippet": "...", "provider": "wikipedia" } ],
   "transcript": null,
+  "steps": { "extract_ms": 640, "evidence_ms": 520, "analyse_ms": 1220 },
   "cached": false,
-  "latency_ms": 2840,
+  "latency_ms": 2380,
   "provider": "nebius",
-  "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
-  "cost_usd": 0.0011,
-  "disclaimer": "AI-generated analysis for media-literacy purposes. Not a fact-check. Verify claims against the listed sources."
+  "model": "openai/gpt-oss-120b",
+  "cost_usd": 0.00053,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources."
 }
 ```
 
 ### Field guide for rendering
 
+Render in this order. It is the reading order the product is designed around.
+
 | Field | Render as |
 | --- | --- |
-| `analysis.post_summary` | First line of the result, plain text |
-| `score_band` | The prominent element: `low` green, `medium` amber, `high` red. Show `manipulation_score` small next to it. |
-| `analysis.communication_signals[]` | Badges. `name` is from the canonical list in `backend/prompts/taxonomy.py`; a name starting with `Other: ` is uncategorised, render it muted. `evidence` is a verbatim quote from the post, show it under or on hover of the badge. Hide the badge when `name` is one of Dog Whistle, Scapegoating, Dehumanization **and** `confidence < 0.6`. |
-| `analysis.logical_fallacies[]` | Chips with `evidence` on hover. |
-| `analysis.indicators.is_division_tactic` | A pill "Built to divide" when true. |
-| `analysis.indicators.timing_note` | Small line under strategic intent. Skip when it equals `No timing signal identified`. |
-| `analysis.author_background` | Author box. If exactly `Unknown author`, say so and hide the sources section. |
-| `sources[]` | Links with provider tag. |
-| `cached`, `latency_ms`, `model`, `provider` | Footer. |
+| `analysis.main_claim` | First block, headed MAIN CLAIM. Show `text` in quotes. `quote` is the span in the post; highlight it in the post preview if you show one. When `found` is false, show "No checkable factual claim in this post" and skip the claim-check block's verdict styling. |
+| `analysis.claim_check.verdict` | A pill. `supported` green · `partially_supported` amber · `unsupported` red · `unverifiable` grey · `no_factual_claim` grey. Never label the post itself true or false; the verdict is about the claim only. |
+| `analysis.claim_check.explanation` | One or two sentences under the pill. |
+| `analysis.claim_check.sources` | Numbered links. Guaranteed to be a subset of `evidence`; the server drops anything the model invented. Empty list is normal for `unverifiable` and `no_factual_claim`. |
+| `analysis.missing_context` | Headed MISSING CONTEXT. Empty string means nothing material is missing: hide the block. |
+| `analysis.rhetorical_signals[]` | Badges. `name` comes from the canonical list in `backend/prompts/taxonomy.py`; a name starting `Other: ` is uncategorised, render it muted. `evidence` is a verbatim quote from the post: show it under the badge or on hover. Empty list means a plainly informational post; hide the block. |
+| `analysis.speaker_context` | Headed SPEAKER CONTEXT. `name · role` on one line, `background` under it. When `background` is exactly `Unknown author`, show that and hide the `sources` list. |
+| `evidence[]` | Optional "what we checked against" disclosure. |
+| `steps`, `latency_ms`, `model`, `provider`, `cached` | Footer. |
 | `disclaimer` | Footer, always visible. |
 
-## `POST /api/v1/analyze-media` (available Saturday night)
+Suggested layout, matching the product spec:
 
-Video posts. The server downloads the audio with yt-dlp, transcribes with SLNG (Deepgram Nova 3, EU region), then runs the same analysis on the transcript.
+```
+MAIN CLAIM
+"Germany accepted 1.2 million migrants last year."
 
-Request:
+CLAIM CHECK            [ PARTIALLY SUPPORTED ]
+The direction is reported by the sources but the scale and timeframe are not.
+Sources: [1] Migration report 2025  [2] Fact check…
 
-```json
-{ "post_url": "https://x.com/someone/status/1234567890", "author_handle": "someone", "author_name": "Some One", "platform": "x" }
+MISSING CONTEXT
+The figure mixes asylum applications with all forms of immigration…
+
+RHETORICAL SIGNALS
+[Loaded Language]  "clearly doesn't care about German citizens"
+
+SPEAKER CONTEXT
+Example Account
+Unknown author
 ```
 
-Response: identical to `/analyze` plus a filled `transcript`:
+## `POST /api/v1/analyze-media` (arrives Sunday morning)
+
+Video posts. The server downloads the audio with yt-dlp, transcribes it with SLNG (Deepgram Nova 3, EU region), then runs the same pipeline on the transcript.
+
+Request: `{ "post_url": "...", "author_handle": "...", "author_name": "...", "platform": "x" }`
+
+Response: identical plus a filled `transcript`:
 
 ```json
 "transcript": { "text": "...", "language": "en", "duration_s": 23.4, "stt_provider": "slng/deepgram-nova-3", "stt_latency_ms": 1650 }
 ```
 
-Full example: `tests/fixtures/responses_v2/media_example.json`. Expect 8–15 s end to end. The server returns one response, no streaming. Client should show three stages on a timer: "Downloading audio" (0–4 s), "Transcribing" (4–8 s), "Analysing" (8 s+). Videos longer than 60 s return `413`.
-
-Until the endpoint ships, `ANALYZER_PROVIDER=fake` will serve `/analyze-media` with the fixture transcript so the client path can be built.
+Full example: `tests/fixtures/responses_v3/media_example.json`. Expect 8 to 15 s end to end, one response, no streaming. Show three stages on a timer: "Downloading audio" (0 to 4 s), "Transcribing" (4 to 8 s), "Analysing" (8 s+). Videos longer than 60 s return `413`.
 
 ## Errors
 
-| Status | Meaning | Body |
-| --- | --- | --- |
-| 400 | Unknown `provider` | `{"detail": "Unknown or unconfigured provider 'x'. Available: [...]"}` |
-| 413 | Video longer than the limit | `{"detail": "..."}` |
-| 422 | Validation error | FastAPI default |
-| 502 | Model call failed, timed out, download or transcription failed | `{"detail": "..."}` |
-| 503 | No analyzer configured on the server | `{"detail": "..."}` |
+| Status | Meaning |
+| --- | --- |
+| 400 | Unknown `provider` |
+| 413 | Video longer than the limit |
+| 422 | Validation error |
+| 502 | Model call failed or timed out; download or transcription failed |
+| 503 | No analyzer configured on the server |
 
-Examples in `tests/fixtures/responses_v2/error_*.json`.
+Bodies are `{"detail": "..."}`. Examples in `tests/fixtures/responses_v3/error_*.json`.
 
 ## Caching
 

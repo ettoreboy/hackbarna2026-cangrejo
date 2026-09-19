@@ -1,0 +1,60 @@
+{
+  "schema_version": "3",
+  "analysis": {
+    "main_claim": {
+      "found": true,
+      "text": "The number of illegal migrants entering Germany is increasing every day.",
+      "quote": "Every day more illegal migrants pour over our borders"
+    },
+    "claim_check": {
+      "verdict": "unverifiable",
+      "explanation": "No evidence was found for this claim.",
+      "sources": []
+    },
+    "missing_context": "Irregular border crossings and heating costs are unrelated budget lines; the post gives no figure for either.",
+    "rhetorical_signals": [
+      {
+        "name": "Loaded Language",
+        "evidence": "pour over our borders"
+      },
+      {
+        "name": "Scapegoating",
+        "evidence": "illegal migrants"
+      },
+      {
+        "name": "Fear-mongering",
+        "evidence": "The system is collapsing"
+      },
+      {
+        "name": "False Dilemma",
+        "evidence": "Either we close the borders now or we lose our country"
+      }
+    ],
+    "speaker_context": {
+      "name": "Alice Weidel",
+      "role": "Politician",
+      "background": "Alice Elisabeth Weidel is a German politician who has served as co-leader of the Alternative for Germany (AfD) since 2022 and as co-leader of the AfD group in the Bundestag since 2017."
+    }
+  },
+  "evidence": [],
+  "sources": [
+    {
+      "title": "Alice Weidel",
+      "url": "https://en.wikipedia.org/wiki/Alice_Weidel",
+      "snippet": "Alice Elisabeth Weidel is a German politician who has served as co-leader of the Alternative for Germany (AfD) since 2022 and as co-leader of the AfD group in the Bundestag since 2017.",
+      "provider": "wikipedia"
+    }
+  ],
+  "transcript": null,
+  "steps": {
+    "extract_ms": 450,
+    "evidence_ms": 0,
+    "analyse_ms": 1250
+  },
+  "cached": false,
+  "latency_ms": 1700,
+  "provider": "nebius",
+  "model": "openai/gpt-oss-120b",
+  "cost_usd": 0.00053,
+  "disclaimer": "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, not the whole post. Verify against the listed sources."
+}

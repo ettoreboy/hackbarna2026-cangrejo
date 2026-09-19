@@ -1,10 +1,15 @@
-"""Request/response contracts (schema v2).
+"""Request/response contracts (schema v3, claim-first).
 
-AnalysisResult doubles as the structured-output schema sent to the model (Gemini
-response_schema, Nebius json_schema). Field descriptions are model instructions:
-keep them short and imperative. All fields are required so strict JSON mode works.
+Two model-facing output shapes exist because the pipeline makes two calls:
 
-Contract changes must be mirrored in docs/API.md and tests/fixtures/responses_v2/.
+- ``MainClaim``    step 1, claim extraction
+- ``AnalysisBody`` step 3, claim check + missing context + rhetorical signals + speaker context
+
+``PostAnalysis`` composes them for the client. The meaning of every field and every verdict
+value is stated in the prompts (backend/prompts/*), because strict grammar mode on the
+inference side does not surface schema descriptions to the model.
+
+Contract changes must be mirrored in docs/API.md and tests/fixtures/responses_v3/.
 """
 
 from __future__ import annotations
@@ -15,11 +20,11 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 from backend.prompts.taxonomy import normalize_label
 
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 
 Platform = Literal["x", "twitter", "instagram", "other"]
-ScoreBand = Literal["low", "medium", "high"]
-Provider = Literal["nebius", "gemini", "fake"]
+Verdict = Literal["supported", "partially_supported", "unsupported", "unverifiable", "no_factual_claim"]
+VERDICTS: tuple[str, ...] = ("supported", "partially_supported", "unsupported", "unverifiable", "no_factual_claim")
 
 
 # --------------------------------------------------------------------------- requests
@@ -50,16 +55,39 @@ class AnalyzeMediaRequest(BaseModel):
         return v.lstrip("@").strip()
 
 
-# --------------------------------------------------------------------------- model output (v2)
+# --------------------------------------------------------------------------- step 1 output
+
+
+class MainClaim(BaseModel):
+    found: bool
+    text: str = Field(..., description="The claim as one standalone sentence; empty when found is false")
+    quote: str = Field(..., description="Verbatim span of the post that carries the claim; empty when found is false")
+
+    @model_validator(mode="after")
+    def empty_when_not_found(self) -> "MainClaim":
+        if not self.found:
+            self.text = ""
+            self.quote = ""
+        return self
+
+
+# --------------------------------------------------------------------------- step 3 output
+
+
+class ClaimSource(BaseModel):
+    title: str
+    url: str
+
+
+class ClaimCheck(BaseModel):
+    verdict: Verdict
+    explanation: str
+    sources: list[ClaimSource]
 
 
 class Signal(BaseModel):
-    """A communication or emotional signal: a manipulation tactic and where it shows in the text."""
-
-    name: str = Field(..., description="One of the ALLOWED communication_signals names")
-    evidence: str = Field(..., description="Short verbatim quote from the post that shows the signal")
-    confidence: float = Field(..., ge=0, le=1, description="0 to 1. Below 0.6 means uncertain")
-    description: str = Field(..., description="One sentence on how the post uses it")
+    name: str
+    evidence: str
 
     @field_validator("name")
     @classmethod
@@ -67,64 +95,34 @@ class Signal(BaseModel):
         return normalize_label(v)
 
 
-class Fallacy(BaseModel):
-    name: str = Field(..., description="One of the ALLOWED logical_fallacies names")
-    evidence: str = Field(..., description="Short verbatim quote from the post that contains the fallacy")
-
-    @field_validator("name")
-    @classmethod
-    def canonical(cls, v: str) -> str:
-        return normalize_label(v)
+class SpeakerContext(BaseModel):
+    name: str
+    role: str
+    background: str
 
 
-class Indicators(BaseModel):
-    strategic_intent: str = Field(..., description="Why say this, now? The motive in plain words")
-    timing_note: str = Field(
-        ..., description="Election, news event or cycle the post rides on, or 'No timing signal identified'"
-    )
-    factual_context: str = Field(
-        ...,
-        description=(
-            "Brief verifiable facts that clarify the claim. Only state facts supported by the provided "
-            "sources or widely established; otherwise say what is unverified"
-        ),
-    )
-    is_division_tactic: bool = Field(..., description="True if the persuasive force comes from group loyalty, not the claim")
-
-
-class AnalysisResult(BaseModel):
-    post_summary: str = Field(..., description="One or two neutral sentences saying what the post claims or asks")
-    author: str = Field(..., description="Display name of the author as given")
-    author_background: str = Field(
-        ...,
-        description=(
-            "Neutral 1-3 sentence summary of the author's public role. If no source was provided and the "
-            "author is not widely known, write exactly 'Unknown author'"
-        ),
-    )
-    communication_signals: list[Signal] = Field(..., description="Empty list if the post is informational")
-    logical_fallacies: list[Fallacy] = Field(..., description="Empty list if none")
-    indicators: Indicators
-    manipulation_score: int = Field(..., ge=0, le=100, description="0 = informational, 100 = pure manipulation")
-    cognitive_summary: str = Field(
-        ..., description="One paragraph teaching the reader the general pattern so they recognise it next time"
-    )
+class AnalysisBody(BaseModel):
+    claim_check: ClaimCheck
+    missing_context: str
+    rhetorical_signals: list[Signal]
+    speaker_context: SpeakerContext
 
     @model_validator(mode="after")
-    def dedupe_labels(self) -> "AnalysisResult":
+    def dedupe_signals(self) -> "AnalysisBody":
         seen: set[str] = set()
-        self.communication_signals = [s for s in self.communication_signals if not (s.name in seen or seen.add(s.name))]
-        seen.clear()
-        self.logical_fallacies = [f for f in self.logical_fallacies if not (f.name in seen or seen.add(f.name))]
+        self.rhetorical_signals = [s for s in self.rhetorical_signals if not (s.name in seen or seen.add(s.name))]
         return self
 
-    @property
-    def score_band(self) -> ScoreBand:
-        if self.manipulation_score < 34:
-            return "low"
-        if self.manipulation_score < 67:
-            return "medium"
-        return "high"
+
+# --------------------------------------------------------------------------- composed
+
+
+class PostAnalysis(BaseModel):
+    main_claim: MainClaim
+    claim_check: ClaimCheck
+    missing_context: str
+    rhetorical_signals: list[Signal]
+    speaker_context: SpeakerContext
 
 
 # --------------------------------------------------------------------------- responses
@@ -145,20 +143,27 @@ class Transcript(BaseModel):
     stt_latency_ms: int = 0
 
 
+class StepTimings(BaseModel):
+    extract_ms: int = 0
+    evidence_ms: int = 0
+    analyse_ms: int = 0
+
+
 class AnalyzeResponse(BaseModel):
     schema_version: str = SCHEMA_VERSION
-    analysis: AnalysisResult
-    score_band: ScoreBand
-    sources: list[Source] = Field(default_factory=list)
+    analysis: PostAnalysis
+    evidence: list[Source] = Field(default_factory=list, description="Web results the claim was checked against")
+    sources: list[Source] = Field(default_factory=list, description="Author background sources")
     transcript: Transcript | None = None
+    steps: StepTimings = Field(default_factory=StepTimings)
     cached: bool = False
     latency_ms: int = 0
     provider: str = ""
     model: str = ""
     cost_usd: float | None = None
     disclaimer: str = (
-        "AI-generated analysis for media-literacy purposes. Not a fact-check. "
-        "Verify claims against the listed sources."
+        "AI-generated analysis for media-literacy purposes. The verdict concerns one extracted claim, "
+        "not the whole post. Verify against the listed sources."
     )
 
 
