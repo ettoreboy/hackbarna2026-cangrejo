@@ -266,32 +266,6 @@
   const WORDS = ["no", "one", "two", "three", "four", "five", "six"];
   const count = (n) => WORDS[n] || String(n);
 
-  // A claim's text is a rewritten standalone sentence; its quote is the post's own words. The
-  // two are often the same sentence minus a "that", and printing both reads as a stutter, so
-  // the quote is shown only when it carries words the claim sentence does not.
-  const FILLER = new Set(["a", "an", "the", "that", "this", "is", "are", "was", "were", "be", "of", "to", "in", "on", "at", "for", "and", "it", "its", "as", "by"]);
-  // "1.2M" in the quote against "1.2 million" in the claim sentence is the same number written
-  // twice, and left alone it read as two different words and kept the duplicate quote on screen.
-  const UNITS = { k: "thousand", m: "million", b: "billion", bn: "billion", tn: "trillion" };
-  const contentWords = (s) =>
-    String(s ?? "")
-      .toLowerCase()
-      .replace(/(\d)\s*(bn|tn|[kmb])\b/g, (_, d, u) => `${d} ${UNITS[u]}`)
-      .replace(/[^\p{L}\p{N}\s]/gu, " ")
-      .split(/\s+/)
-      .filter((w) => w && !FILLER.has(w));
-
-  const addsNothing = (quote, text) => {
-    const inQuote = new Set(contentWords(quote));
-    const inText = new Set(contentWords(text));
-    if (!inQuote.size || !inText.size) return true;
-    let shared = 0;
-    for (const w of inQuote) if (inText.has(w)) shared += 1;
-    // Either the quote is a subset of the claim sentence, or the wording is near-identical
-    // both ways. A quote that is longer, or differently worded, still gets shown.
-    return shared === inQuote.size || shared / Math.max(inQuote.size, inText.size) >= 0.8;
-  };
-
   class UnfoldCard {
     /**
      * @param {HTMLElement} article  the tweet this card belongs to
@@ -566,11 +540,13 @@
         result = this._verdictBlock(r.data);
       }
 
+      // claim.quote is not rendered. It is the post's own wording of the same sentence, so
+      // under the claim it read as a stutter; the words the post actually used are still on
+      // screen in the post itself, right above the card.
       return `<div class="view">
         <div class="block">
           <h3>Claim</h3>
           <p class="lead">&ldquo;${esc(claim.text)}&rdquo;</p>
-          ${claim.quote && !addsNothing(claim.quote, claim.text) ? `<blockquote>${esc(claim.quote)}</blockquote>` : ""}
         </div>
         <div class="block">${result}</div>
       </div>`;
