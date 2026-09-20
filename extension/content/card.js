@@ -446,24 +446,13 @@
       } else if (this.view === "claim" && this.currentId) {
         const i = this._claims().findIndex((c) => c.id === this.currentId);
         meta = `Claim ${i + 1} of ${this._claims().length}`;
-      } else if (this.view === "post") {
-        const n = this._sourceCount();
-        meta = n ? plural(n, "source", "sources") : "";
       }
+      // The full-post view carries no count: the sources live in each claim's own list, so a
+      // total in the corner counted things the reader could not see from here.
       return `<header>
         <span class="brand">${window.UF_ICON.svg(19)}Unfold</span>
         <span class="hmeta">${esc(meta)}</span>
       </header>`;
-    }
-
-    _sourceCount() {
-      const urls = new Set();
-      for (const s of (this.claimsData && this.claimsData.sources) || []) urls.add(s.url);
-      for (const r of this.results.values()) {
-        if (r.state !== "done") continue;
-        for (const e of r.data.evidence || []) urls.add(e.url);
-      }
-      return urls.size;
     }
 
     // ---- menu -------------------------------------------------------
@@ -636,16 +625,30 @@
         const key = r.data.claim_check && r.data.claim_check.verdict;
         if (key in tally) tally[key] += 1;
       }
-      const parts = [];
-      if (tally.supported) parts.push(`${count(tally.supported)} ${tally.supported === 1 ? "is" : "are"} supported by the sources found`);
-      if (tally.partially_supported) parts.push(`${count(tally.partially_supported)} ${tally.partially_supported === 1 ? "is" : "are"} partially supported`);
-      if (tally.unsupported) parts.push(`${count(tally.unsupported)} ${tally.unsupported === 1 ? "is" : "are"} contradicted by them`);
-      if (tally.unverifiable) parts.push(`${count(tally.unverifiable)} could not be verified from the evidence found`);
-      if (failed) parts.push(`${count(failed)} could not be checked`);
+      // Each outcome as a bare predicate, so it reads either as "Both claims are X" or,
+      // when they differ, as "one is X and one is Y".
+      const buckets = [
+        [tally.supported, "supported by the sources found"],
+        [tally.partially_supported, "partially supported"],
+        [tally.unsupported, "contradicted by the sources found"],
+        [tally.unverifiable, "not verifiable from the evidence found"],
+        [failed, "left unchecked because the check did not complete"],
+      ].filter(([n]) => n > 0);
 
-      const sentence = parts.length
-        ? `Of ${plural(claims.length, "checkable claim", "checkable claims")} in this post, ${joinList(parts)}.`
-        : `${plural(claims.length, "checkable claim", "checkable claims")} in this post.`;
+      const total = claims.length;
+      let sentence;
+      if (!buckets.length) {
+        sentence = `${plural(total, "checkable claim", "checkable claims")} in this post.`;
+      } else if (buckets.length === 1) {
+        // One outcome for all of them: say it plainly instead of counting to itself.
+        const predicate = buckets[0][1];
+        if (total === 1) sentence = `The one checkable claim in this post is ${predicate}.`;
+        else if (total === 2) sentence = `Both checkable claims in this post are ${predicate}.`;
+        else sentence = `All ${count(total)} checkable claims in this post are ${predicate}.`;
+      } else {
+        const parts = buckets.map(([n, predicate]) => `${count(n)} ${n === 1 ? "is" : "are"} ${predicate}`);
+        sentence = `Of the ${count(total)} checkable claims in this post, ${joinList(parts)}.`;
+      }
 
       return `<div class="block">
         <h3>Post overview</h3>
