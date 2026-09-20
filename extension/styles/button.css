@@ -9,6 +9,13 @@
   all: unset;
   display: inline-flex;
   align-items: center;
+  /* X's action bar is a flex row and aligns its children by stretching them. The row is
+     taller on a post's own page than in the timeline, so the pill grew with it and the
+     highlight came out bigger there than next to the icons it sits with. Centring the
+     button in the row, and refusing to grow or shrink, makes it the same size everywhere:
+     its own content plus its own padding, whatever the bar around it does. */
+  align-self: center;
+  flex: 0 0 auto;
   gap: 6px;
   margin-left: 6px;
   padding: 5px 11px 5px 7px;
