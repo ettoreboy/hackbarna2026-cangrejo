@@ -141,18 +141,43 @@
     a { color: var(--accent); text-decoration: none; word-break: break-word; }
     a:hover { text-decoration: underline; }
 
-    .missing { margin-top: 9px; font-size: 13.5px; color: var(--muted); }
+    /* "What is missing" is body copy, not an aside: same size and colour as the rest. */
+    .missing { margin-top: 13px; }
+    .missing h3 { margin-bottom: 5px; }
     .empty { font-size: 13.5px; color: var(--muted); }
 
-    details { margin-top: 11px; }
-    summary { cursor: pointer; font-size: 12.5px; color: var(--muted); list-style: none; }
+    /* Collapsed source list. The twisty is the same glyph the claim rows use, rotated when
+       open, so one chevron shape means "there is more this way" everywhere in the card. */
+    details { margin-top: 13px; }
+    summary {
+      display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none;
+      font-size: 13px; color: var(--muted); padding: 2px 0; transition: color 120ms ease;
+    }
+    summary:hover { color: var(--accent); }
     summary::-webkit-details-marker { display: none; }
-    summary::before { content: "\\25B8 "; }
-    details[open] summary::before { content: "\\25BE "; }
-    .ev { margin-top: 8px; font-size: 13px; }
-    .ev li { margin-bottom: 8px; }
-    .ev ul { margin: 0; padding-left: 17px; }
-    .ev .snip { color: var(--muted); font-size: 12.5px; }
+    summary::marker { content: ""; }
+    summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+    .tw::before {
+      content: "\\203A"; display: inline-block; font-size: 15px; line-height: 1;
+      transition: transform 140ms ease; transform-origin: 45% 50%;
+    }
+    details[open] .tw::before { transform: rotate(90deg); }
+    @media (prefers-reduced-motion: reduce) { .tw::before { transition: none; } }
+
+    ol.srclist { margin: 9px 0 0; padding: 0; list-style: none; font-size: 13px; }
+    ol.srclist li { display: flex; gap: 8px; margin-bottom: 9px; }
+    ol.srclist li:last-child { margin-bottom: 0; }
+    ol.srclist .n {
+      color: var(--muted); flex-shrink: 0; font-variant-numeric: tabular-nums;
+      min-width: 13px; text-align: right;
+    }
+    ol.srclist .src { display: block; }
+    ol.srclist .snip { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+    ol.srclist .cited {
+      display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 500;
+      letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; vertical-align: 1px;
+    }
 
     /* verdict marker on a claim row that has already been checked */
     .dot {
@@ -510,37 +535,51 @@
     _verdictBlock(data) {
       const check = data.claim_check || {};
       const v = window.UF_TAXONOMY.verdict(check.verdict);
-      const sources = check.sources || [];
-      const cites = sources.length
-        ? `<ol class="cites">${sources
-            .map(
-              (s, i) => `<li><span class="n">[${i + 1}]</span>
-                <a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a></li>`
-            )
-            .join("")}</ol>`
-        : "";
       const missing =
         data.missing_context && String(data.missing_context).trim()
-          ? `<div class="missing"><h3 style="margin-top:12px">What is missing</h3>${esc(data.missing_context)}</div>`
+          ? `<div class="missing"><h3>What is missing</h3><p>${esc(data.missing_context)}</p></div>`
           : "";
-      const evidence = this._evidence(data.evidence);
 
       return `<span class="pill ${v.tone}">${esc(v.label)}</span>
         ${check.explanation ? `<p style="margin-top:9px">${esc(check.explanation)}</p>` : ""}
-        ${cites}${missing}${evidence}`;
+        ${this._sources(data)}
+        ${missing}`;
     }
 
-    _evidence(list) {
-      const items = list || [];
+    /**
+     * One collapsed list rather than two open ones: the five links the verdict rests on and
+     * the five pages we searched were the same five, printed twice.
+     *
+     * Everything searched is listed, and the entries the verdict actually leans on are
+     * marked. That distinction is the honest part - a page we read and set aside is not the
+     * same as a page we relied on - so it survives the merge instead of being flattened away.
+     */
+    _sources(data) {
+      const evidence = data.evidence || [];
+      const cited = data.claim_check && data.claim_check.sources ? data.claim_check.sources : [];
+      // cited is guaranteed a subset of evidence by the server, but fall back rather than
+      // show nothing if that ever stops holding.
+      const items = evidence.length ? evidence : cited;
       if (!items.length) return "";
-      return `<details>
-        <summary>What this claim was checked against (${items.length})</summary>
-        <div class="ev"><ul>${items
-          .map(
-            (e) => `<li><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.title)}</a>
-              ${e.snippet ? `<div class="snip">${esc(e.snippet)}</div>` : ""}</li>`
-          )
-          .join("")}</ul></div>
+
+      const citedUrls = new Set(cited.map((s) => String(s.url).replace(/\/+$/, "")));
+      const rows = items
+        .map((e, i) => {
+          const isCited = citedUrls.has(String(e.url).replace(/\/+$/, ""));
+          return `<li>
+            <span class="n">${i + 1}</span>
+            <span class="src">
+              <a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.title)}</a>
+              ${isCited ? `<span class="cited">cited</span>` : ""}
+              ${e.snippet ? `<span class="snip">${esc(e.snippet)}</span>` : ""}
+            </span>
+          </li>`;
+        })
+        .join("");
+
+      return `<details class="sources">
+        <summary><span class="tw"></span>List of sources (${items.length})</summary>
+        <ol class="srclist">${rows}</ol>
       </details>`;
     }
 
