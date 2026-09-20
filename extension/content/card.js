@@ -130,6 +130,35 @@
     .chip.risk { background: var(--amber-bg); color: var(--amber); }
     .chip .q { color: var(--muted); }
 
+    /* Hover definition. A name like "Dog Whistle" is jargon, so the chip carries its own
+       explanation: dotted underline to say there is something to read, opened by the cursor
+       and by keyboard focus alike. Solid accent on white, the same blue the badge already
+       uses, and absolute so opening it never moves the rows underneath. */
+    .chip-wrap { position: relative; display: inline-block; }
+    .chip-wrap .chip {
+      cursor: help;
+      text-decoration: underline dotted currentColor;
+      text-underline-offset: 3px;
+    }
+    .tip {
+      position: absolute; left: 50%; bottom: calc(100% + 7px); z-index: 3;
+      width: max-content; max-width: 240px;
+      padding: 7px 10px; border-radius: 9px;
+      background: var(--accent); color: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,.18);
+      font-size: 12.5px; line-height: 1.35; font-weight: 400; letter-spacing: 0;
+      opacity: 0; visibility: hidden; pointer-events: none;
+      transition: opacity 120ms ease;
+    }
+    /* Opens up and to the right of the badge, anchored at its middle, so a 240px box still
+       clears the card's right edge even after the widest label in the taxonomy. */
+    .tip::after {
+      content: ""; position: absolute; top: 100%; left: 13px;
+      border: 5px solid transparent; border-bottom: 0; border-top-color: var(--accent);
+    }
+    .chip-wrap:hover .tip, .chip:focus-visible + .tip { opacity: 1; visibility: visible; }
+    @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+
     blockquote {
       margin: 8px 0 0; padding-left: 10px; border-left: 3px solid var(--accent);
       font-size: 13.5px; color: var(--muted); word-break: break-word;
@@ -236,6 +265,32 @@
   // "one", "two"... reads better than a digit mid-sentence for the small numbers we ever hit.
   const WORDS = ["no", "one", "two", "three", "four", "five", "six"];
   const count = (n) => WORDS[n] || String(n);
+
+  // A claim's text is a rewritten standalone sentence; its quote is the post's own words. The
+  // two are often the same sentence minus a "that", and printing both reads as a stutter, so
+  // the quote is shown only when it carries words the claim sentence does not.
+  const FILLER = new Set(["a", "an", "the", "that", "this", "is", "are", "was", "were", "be", "of", "to", "in", "on", "at", "for", "and", "it", "its", "as", "by"]);
+  // "1.2M" in the quote against "1.2 million" in the claim sentence is the same number written
+  // twice, and left alone it read as two different words and kept the duplicate quote on screen.
+  const UNITS = { k: "thousand", m: "million", b: "billion", bn: "billion", tn: "trillion" };
+  const contentWords = (s) =>
+    String(s ?? "")
+      .toLowerCase()
+      .replace(/(\d)\s*(bn|tn|[kmb])\b/g, (_, d, u) => `${d} ${UNITS[u]}`)
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w && !FILLER.has(w));
+
+  const addsNothing = (quote, text) => {
+    const inQuote = new Set(contentWords(quote));
+    const inText = new Set(contentWords(text));
+    if (!inQuote.size || !inText.size) return true;
+    let shared = 0;
+    for (const w of inQuote) if (inText.has(w)) shared += 1;
+    // Either the quote is a subset of the claim sentence, or the wording is near-identical
+    // both ways. A quote that is longer, or differently worded, still gets shown.
+    return shared === inQuote.size || shared / Math.max(inQuote.size, inText.size) >= 0.8;
+  };
 
   class UnfoldCard {
     /**
@@ -515,7 +570,7 @@
         <div class="block">
           <h3>Claim</h3>
           <p class="lead">&ldquo;${esc(claim.text)}&rdquo;</p>
-          ${claim.quote ? `<blockquote>${esc(claim.quote)}</blockquote>` : ""}
+          ${claim.quote && !addsNothing(claim.quote, claim.text) ? `<blockquote>${esc(claim.quote)}</blockquote>` : ""}
         </div>
         <div class="block">${result}</div>
       </div>`;
@@ -613,42 +668,56 @@
       if (!claims.length) {
         return `<div class="block">
           <h3>Post overview</h3>
-          <p class="lead">This post makes no checkable factual claim. What follows describes how it
-          is written and who is speaking, not whether it is true.</p>
+          <p class="lead">There is no factual claim here to check. What follows describes how the
+          post is written and who is speaking, not whether it is true.</p>
         </div>`;
       }
       const tally = { supported: 0, partially_supported: 0, unsupported: 0, unverifiable: 0 };
-      let failed = 0;
+      let noAnswer = 0;
       for (const c of claims) {
         const r = this.results.get(c.id);
-        if (!r || r.state !== "done") { failed++; continue; }
+        if (!r || r.state !== "done") { noAnswer++; continue; }
         const key = r.data.claim_check && r.data.claim_check.verdict;
+        // Anything outside the four verdicts - a request that failed, or no_factual_claim on a
+        // row we offered as a claim - is a claim the reader got no answer on. Counting it here
+        // rather than nowhere keeps the buckets adding up to the number of claims.
         if (key in tally) tally[key] += 1;
+        else noAnswer += 1;
       }
-      // Each outcome as a bare predicate, so it reads either as "Both claims are X" or,
-      // when they differ, as "one is X and one is Y".
-      const buckets = [
-        [tally.supported, "supported by the sources found"],
-        [tally.partially_supported, "partially supported"],
-        [tally.unsupported, "contradicted by the sources found"],
-        [tally.unverifiable, "not verifiable from the evidence found"],
-        [failed, "left unchecked because the check did not complete"],
-      ].filter(([n]) => n > 0);
-
       const total = claims.length;
-      let sentence;
-      if (!buckets.length) {
-        sentence = `${plural(total, "checkable claim", "checkable claims")} in this post.`;
-      } else if (buckets.length === 1) {
-        // One outcome for all of them: say it plainly instead of counting to itself.
-        const predicate = buckets[0][1];
-        if (total === 1) sentence = `The one checkable claim in this post is ${predicate}.`;
-        else if (total === 2) sentence = `Both checkable claims in this post are ${predicate}.`;
-        else sentence = `All ${count(total)} checkable claims in this post are ${predicate}.`;
-      } else {
-        const parts = buckets.map(([n, predicate]) => `${count(n)} ${n === 1 ? "is" : "are"} ${predicate}`);
-        sentence = `Of the ${count(total)} checkable claims in this post, ${joinList(parts)}.`;
+
+      // Nothing to qualify: say so in one clause, with no arithmetic in front of it.
+      if (tally.supported === total) {
+        const line =
+          total === 1
+            ? "The claim in this post is supported by the sources found."
+            : total === 2
+              ? "Both claims in this post are supported by the sources found."
+              : `All ${count(total)} claims in this post are supported by the sources found.`;
+        return `<div class="block">
+          <h3>Post overview</h3>
+          <p class="lead">${line}</p>
+        </div>`;
       }
+
+      // Otherwise name only what is not settled, in plain words. The supported ones are the
+      // remainder and spelling them out is what made this sentence read like a tally sheet.
+      // "unverifiable" and a failed check both leave the reader without an answer, so they are
+      // one phrase, not two shades of failure.
+      const buckets = [
+        [tally.unsupported, "is not supported by the sources found", "are not supported by the sources found"],
+        [tally.partially_supported, "is only partly supported", "are only partly supported"],
+        [tally.unverifiable + noAnswer, "could not be checked", "could not be checked"],
+      ];
+      const parts = buckets
+        .filter(([n]) => n > 0)
+        .map(([n, one, many]) => `${count(n)} ${n === 1 ? one : many}`);
+
+      const sentence = !parts.length
+        ? `${plural(total, "claim", "claims")} in this post.`
+        : total === 1
+          ? `The claim in this post ${buckets.find(([n]) => n > 0)[1]}.`
+          : `Of ${count(total)} claims in this post, ${joinList(parts)}.`;
 
       return `<div class="block">
         <h3>Post overview</h3>
@@ -679,12 +748,21 @@
       return `<div class="block">
         <h3>Post signals</h3>
         <ul class="signals">${list
-          .map((s) => {
+          .map((s, i) => {
             const other = window.UF_TAXONOMY.isUncategorised(s.name);
             const risk = window.UF_TAXONOMY.isHighRisk(s.name);
             const cls = ["chip", other ? "other" : "", risk ? "risk" : ""].filter(Boolean).join(" ");
+            // A label the model invented has no definition, so that chip gets no tooltip and
+            // no underline rather than an empty box. Ids are Shadow DOM-local.
+            const why = window.UF_TAXONOMY.meaning(s.name);
+            const tipId = `tip-${i}`;
+            const chip = why
+              ? `<span class="chip-wrap"><span class="${cls}" tabindex="0" aria-describedby="${tipId}">${esc(
+                  s.name
+                )}</span><span class="tip" id="${tipId}" role="tooltip">${esc(why)}</span></span>`
+              : `<span class="${cls}">${esc(s.name)}</span>`;
             return `<li>
-              <span class="${cls}">${esc(s.name)}</span>
+              ${chip}
               ${s.evidence ? `<blockquote>${esc(s.evidence)}</blockquote>` : `<span class="no-quote">no quote returned</span>`}
             </li>`;
           })

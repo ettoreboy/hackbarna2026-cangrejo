@@ -22,7 +22,7 @@ EXT = ROOT / "extension"
 
 sys.path.insert(0, str(ROOT))
 
-from backend.prompts.taxonomy import HIGH_RISK_SIGNALS  # noqa: E402
+from backend.prompts.taxonomy import CUES, HIGH_RISK_SIGNALS, SIGNALS  # noqa: E402
 from backend.schemas.analysis_schema import VERDICTS  # noqa: E402
 
 OK, BAD = "  ok   ", "  FAIL "
@@ -42,6 +42,19 @@ def js_object_keys(source: str, const_name: str) -> set[str]:
     if not m:
         return set()
     return set(re.findall(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:", m.group(1), re.M))
+
+
+def js_quoted_map(source: str, const_name: str) -> dict[str, str]:
+    """Pairs of `const NAME = { "key": "value", ... }`, taken from the first brace block."""
+    m = re.search(rf"{const_name}\s*=\s*\{{(.*?)\n\s*\}};", source, re.S)
+    if not m:
+        return {}
+    return dict(re.findall(r'"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)"', m.group(1)))
+
+
+def _flatten(text: str) -> str:
+    """Compare meanings ignoring the capital, the full stop and JS backslash escapes."""
+    return text.replace("\\", "").strip().rstrip(".").lower()
 
 
 def main() -> int:
@@ -115,6 +128,17 @@ def main() -> int:
 
     ext_high_risk = js_string_set(taxonomy, "HIGH_RISK")
     check(ext_high_risk == set(HIGH_RISK_SIGNALS), f"high-risk signals match taxonomy.py — extra {sorted(ext_high_risk - set(HIGH_RISK_SIGNALS))}, missing {sorted(set(HIGH_RISK_SIGNALS) - ext_high_risk)}")
+
+    # The card shows MEANINGS[name] on hover, so a signal the model can emit with no entry
+    # there renders as a bare badge the reader cannot interpret. Text is compared too: the
+    # card only capitalises the cue and ends it with a full stop.
+    ext_meanings = js_quoted_map(taxonomy, "MEANINGS")
+    check(
+        set(ext_meanings) == set(SIGNALS),
+        f"signal meanings cover taxonomy.py — extra {sorted(set(ext_meanings) - set(SIGNALS))}, missing {sorted(set(SIGNALS) - set(ext_meanings))}",
+    )
+    drifted = sorted(n for n, text in ext_meanings.items() if n in CUES and _flatten(text) != _flatten(CUES[n]))
+    check(not drifted, "meaning text matches the prompt cues" + (f" — drifted {drifted}" if drifted else ""))
 
     print()
     if failures:

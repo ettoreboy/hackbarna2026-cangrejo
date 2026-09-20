@@ -25,6 +25,39 @@
   // gives us no confidence value to threshold on.
   const HIGH_RISK = new Set(["Dog Whistle", "Scapegoating", "Dehumanization"]);
 
+  // What each signal name means, in one line, for the card's hover definition. Mirrors CUES in
+  // backend/prompts/taxonomy.py and scripts/check_extension.py compares the two: a badge on its
+  // own is an accusation in jargon, and a reader who does not know what "Dog Whistle" means
+  // cannot agree or disagree with it.
+  const MEANINGS = {
+    "Loaded Language": "An emotionally charged word chosen over a neutral one.",
+    "Outrage Farming": "Framed to provoke sharing and anger rather than to inform.",
+    "Scapegoating": "One group blamed for a complex problem.",
+    "Fear-mongering": "Predicts harm or catastrophe to move the reader.",
+    "Dog Whistle": "Coded phrasing that signals something extra to an in-group.",
+    "Us-vs-Them Framing": "Splits people into a virtuous us and a hostile them.",
+    "Dehumanization": "People described as vermin, parasites, filth or cargo.",
+    "Emotional Bait": "Asks for a reaction, share or outrage rather than making a point.",
+    "Manufactured Urgency": "A deadline or now-or-never framing that is not real.",
+    "Cherry Picking": "One favourable number or case stands in for the whole picture.",
+    "Whataboutism": "Deflects by pointing at someone else's conduct.",
+    "Gish Gallop": "Many separate assertions at once, too many to answer.",
+    "Astroturfing": "Presents an organised campaign as spontaneous public feeling.",
+    "False Dilemma": "Only two options offered when more exist.",
+    "False Solution": "A complex problem is given a total, guaranteed fix.",
+    "Ad Hominem": "Attacks the person instead of the argument.",
+    "Hasty Generalization": "A sweeping rule drawn from one or two cases.",
+    "Slippery Slope": "One step is said to lead inevitably to an extreme outcome.",
+    "Straw Man": "Argues against a distorted version of the other side's position.",
+    "Middle Ground": "Treats the midpoint between two claims as automatically correct.",
+    "Bandwagon": "Everyone thinks this, therefore it is true.",
+    "Appeal to Authority": "Cites status or a title in place of evidence.",
+    "Loaded Question": "A question whose phrasing assumes the disputed fact.",
+    "No True Scotsman": "Redefines the group to exclude an inconvenient example.",
+    "Post Hoc": "Treats sequence as proof of cause.",
+    "Motte and Bailey": "Advances a bold claim, retreats to a modest one when challenged.",
+  };
+
   window.UF_TAXONOMY = {
     verdict(name) {
       return VERDICTS[String(name || "")] || FALLBACK;
@@ -37,6 +70,11 @@
 
     isHighRisk(name) {
       return HIGH_RISK.has(String(name || ""));
+    },
+
+    // One plain line explaining the label, or "" for an invented one we have no definition for.
+    meaning(name) {
+      return MEANINGS[String(name || "")] || "";
     },
   };
 })();
