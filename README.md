@@ -12,6 +12,17 @@ Built at HackBarna AI Summit 26, Norrsken House Barcelona, 19–20 September 202
 
 ## What you see
 
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/post-with-unfold-button.png" alt="A post by Alice Weidel on X about fuel prices, with an Unfold button added to the action bar beside bookmark and share."></td>
+<td width="50%"><img src="docs/assets/full-post-analysis.png" alt="The Unfold card open under the post: a post overview reading 'Of two claims in this post, one is not supported by the sources found and one is only partly supported', two missing-context notes, a Scapegoating badge quoting 'The established parties want to take the money out of your pocket', neutral background on Alice Weidel, and a collapsed list of 11 sources."></td>
+</tr>
+<tr>
+<td><em>The button sits in the post's own action bar, beside bookmark and share.</em></td>
+<td><em>The full-post analysis: every claim's outcome in one sentence, what the post leaves out, each signal with the words that triggered it, neutral speaker background, and every source the analysis touched.</em></td>
+</tr>
+</table>
+
 Click **Unfold** on any post and a drawer opens inline in the timeline, with five blocks:
 
 | Block | What it is |
