@@ -1,4 +1,4 @@
-"""POST /api/v1/analyze, GET /api/v1/health. (/analyze-media arrives with the SLNG work package.)"""
+"""GET /api/v1/health, POST /api/v1/analyze, /claims, /analyze-claim. (No media route: see docs/API.md.)"""
 
 from __future__ import annotations
 
