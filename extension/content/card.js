@@ -62,7 +62,8 @@
     .brand { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 14px; }
     /* The mark inherits the colour property, so both tones follow X's accent. */
     .uf-icon { display: block; color: var(--accent); flex-shrink: 0; }
-    .hmeta { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    /* Secondary chrome: a count and a separator label, quieter than the muted body text. */
+    .hmeta { font-size: 13px; color: var(--muted); opacity: .7; white-space: nowrap; }
 
     .view { padding: 13px 14px 4px; }
     .ask { font-size: 14.5px; font-weight: 600; margin: 0 0 11px; }
@@ -86,9 +87,17 @@
       color: var(--accent); flex-shrink: 0; min-width: 17px; line-height: 1.5;
     }
     .row .rtext { flex: 1; font-size: 14px; }
-    .row .sub { display: block; font-size: 12.5px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+    /* The verdict label takes its dot's colour, so the two read as one marker. */
+    .row .sub { display: block; font-size: 12.5px; color: var(--muted); font-weight: 400; margin-top: 3px; }
+    .row .sub.green { color: var(--green); }
+    .row .sub.amber { color: var(--amber); }
+    .row .sub.red   { color: var(--red); }
+    .row .sub.grey  { color: var(--grey); }
 
-    .divider { display: flex; align-items: center; gap: 10px; margin: 13px 0 10px; color: var(--muted); font-size: 12.5px; }
+    .divider {
+      display: flex; align-items: center; gap: 10px; margin: 13px 0 10px;
+      color: var(--muted); opacity: .7; font-size: 12.5px;
+    }
     .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
 
     /* Section titles sit back from the prose: lighter weight and wider tracking, so they
@@ -101,6 +110,12 @@
     .block:first-child { border-top: none; padding-top: 0; }
     p { margin: 0; font-size: 14px; }
     .lead { font-size: 14.5px; }
+    /* Author line: names who is speaking before describing them. */
+    /* "Author:" is part of the sentence, so it reads in body colour. The name itself goes
+       grey when there is no source to link it to: nothing about who is speaking was
+       verified, and a black name would imply otherwise. */
+    .author { margin-bottom: 5px; }
+    .author .unlinked { color: var(--muted); }
 
     .pill {
       display: inline-block; font-weight: 700; font-size: 11.5px; letter-spacing: .02em;
@@ -112,17 +127,19 @@
     .pill.grey  { color: var(--grey);  background: var(--grey-bg); }
 
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .signals { list-style: none; margin: 0; padding: 0; }
-    .signals li { margin: 0 0 10px; }
-    .signals li:last-child { margin-bottom: 0; }
-    .signals blockquote { margin-top: 5px; }
+    /* The air goes around each badge, not inside it: the pill keeps its own tight shape and
+       the breathing room sits between the heading, the badge and the quote beneath. */
+    .signals { list-style: none; margin: 12px 0 0; padding: 0; }
+    .signals li { margin: 0 0 16px; }
+    .signals li:last-child { margin-bottom: 4px; }
+    .signals blockquote { margin-top: 10px; }
     .no-quote { font-size: 12.5px; color: var(--muted); margin-left: 8px; }
     /* Badges carry the accent rather than body black, and sit lighter than the prose:
        300 where the font has a Light cut, otherwise the browser rounds it to normal. */
     .chip {
-      font-size: 12.5px; padding: 7px 12px; border-radius: 9999px;
+      font-size: 12.5px; padding: 4px 11px; border-radius: 9999px;
       background: var(--accent-bg); color: var(--accent); font-weight: 300;
-      letter-spacing: .01em; line-height: 1.2;
+      letter-spacing: .01em; line-height: 1.35;
     }
     .chip.other { color: var(--muted); font-style: italic; }
     /* Dog Whistle, Scapegoating, Dehumanization. UF_TAXONOMY.isHighRisk has always been
@@ -135,11 +152,9 @@
        and by keyboard focus alike. Solid accent on white, the same blue the badge already
        uses, and absolute so opening it never moves the rows underneath. */
     .chip-wrap { position: relative; display: inline-block; }
-    .chip-wrap .chip {
-      cursor: help;
-      text-decoration: underline dotted currentColor;
-      text-underline-offset: 3px;
-    }
+    /* No underline: the badge is already a pill, which is affordance enough, and a dotted
+       rule under short label text read as a spelling error. The cursor still says "help". */
+    .chip-wrap .chip { cursor: help; }
     .tip {
       position: absolute; left: 50%; bottom: calc(100% + 7px); z-index: 3;
       width: max-content; max-width: 240px;
@@ -159,9 +174,11 @@
     .chip-wrap:hover .tip, .chip:focus-visible + .tip { opacity: 1; visibility: visible; }
     @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
 
+    /* The quoted words are the evidence, not an aside, so they read in body colour. The
+       accent rule down the left already marks them as quoted. */
     blockquote {
       margin: 8px 0 0; padding-left: 10px; border-left: 3px solid var(--accent);
-      font-size: 13.5px; color: var(--muted); word-break: break-word;
+      font-size: 13.5px; word-break: break-word;
     }
 
     ol.cites { margin: 9px 0 0; padding: 0; list-style: none; font-size: 13px; }
@@ -504,9 +521,9 @@
           let status = "";
           if (r && r.state === "done") {
             const v = window.UF_TAXONOMY.verdict(r.data.claim_check && r.data.claim_check.verdict);
-            status = `<span class="sub"><span class="dot ${v.tone}"></span>${esc(v.label)}</span>`;
+            status = `<span class="sub ${v.tone}"><span class="dot ${v.tone}"></span>${esc(v.label)}</span>`;
           } else if (r && r.state === "error") {
-            status = `<span class="sub"><span class="dot grey"></span>Could not check</span>`;
+            status = `<span class="sub grey"><span class="dot grey"></span>Could not check</span>`;
           }
           return `<button type="button" class="row" data-act="claim" data-id="${esc(c.id)}">
             <span class="n">${String(i + 1).padStart(2, "0")}</span>
@@ -792,30 +809,41 @@
       </div>`;
     }
 
+    /**
+     * Who is speaking comes before what is known about them, on its own labelled line:
+     *
+     *   ABOUT THE SPEAKER
+     *   Author: Alice Weidel / Wikipedia
+     *   Alice Weidel is a German politician who...
+     *
+     * The name links out when a background source exists, so the label always names a person
+     * rather than leaving a bare citation to stand in for one.
+     */
     _speakerBlock(speaker, sources) {
       const unknown = norm(speaker.background) === UNKNOWN_AUTHOR;
-      const nameLine = [speaker.name, speaker.role].filter((s) => s && String(s).trim()).map(esc).join(" &middot; ");
+      const name = [speaker.name, speaker.role].filter((s) => s && String(s).trim()).map(esc).join(" &middot; ");
+      const list = sources || [];
+
+      const authorLine = list.length
+        ? list
+            .map(
+              (s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title || speaker.name)}</a>`
+            )
+            .join(" / ")
+        : `<span class="unlinked">${name}</span>`;
+
       if (unknown) {
         return `<div class="block">
           <h3>About the speaker</h3>
-          <p>${nameLine}</p>
-          <p class="empty" style="margin-top:4px">No public background found, so nothing here is
-          verified about who is speaking.</p>
+          <p class="author">Author: <span class="unlinked">${name}</span></p>
+          <p class="empty">No public background found, so nothing here is verified about who is
+          speaking.</p>
         </div>`;
       }
-      const list = sources || [];
       return `<div class="block">
         <h3>About the speaker</h3>
+        <p class="author">Author: ${authorLine}</p>
         <p>${esc(speaker.background)}</p>
-        ${
-          list.length
-            ? `<ol class="cites">${list
-                .map(
-                  (s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a></li>`
-                )
-                .join("")}</ol>`
-            : ""
-        }
       </div>`;
     }
 
