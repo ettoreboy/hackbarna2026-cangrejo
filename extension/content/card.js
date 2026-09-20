@@ -193,6 +193,10 @@
     details[open] .tw::before { transform: rotate(90deg); }
     @media (prefers-reduced-motion: reduce) { .tw::before { transition: none; } }
 
+    /* At the foot of the full post the list is the whole block, so it opens flush with the
+       section above rather than carrying the gap it needs under a claim's explanation. */
+    .block.allsrc details { margin-top: 0; }
+
     ol.srclist { margin: 9px 0 0; padding: 0; list-style: none; font-size: 13px; }
     ol.srclist li { display: flex; gap: 8px; margin-bottom: 9px; }
     ol.srclist li:last-child { margin-bottom: 0; }
@@ -253,6 +257,10 @@
     String(s ?? "").replace(/[&<>"']/g, (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
     );
+
+  // Sources are matched on the URL with any trailing slashes off: the same page reaches us
+  // from a search and from a citation list written two different ways.
+  const srcKey = (u) => String(u ?? "").replace(/\/+$/, "");
 
   // Every view that is not the menu returns to it the same way.
   const BACK_BUTTON =
@@ -580,12 +588,15 @@
       // cited is guaranteed a subset of evidence by the server, but fall back rather than
       // show nothing if that ever stops holding.
       const items = evidence.length ? evidence : cited;
-      if (!items.length) return "";
+      return this._sourceList(items, new Set(cited.map((s) => srcKey(s.url))));
+    }
 
-      const citedUrls = new Set(cited.map((s) => String(s.url).replace(/\/+$/, "")));
+    /** The one list markup, shared by a single claim and by the full post. */
+    _sourceList(items, citedUrls) {
+      if (!items.length) return "";
       const rows = items
         .map((e, i) => {
-          const isCited = citedUrls.has(String(e.url).replace(/\/+$/, ""));
+          const isCited = citedUrls.has(srcKey(e.url));
           return `<li>
             <span class="n">${i + 1}</span>
             <span class="src">
@@ -601,6 +612,40 @@
         <summary><span class="tw"></span>List of sources (${items.length})</summary>
         <ol class="srclist">${rows}</ol>
       </details>`;
+    }
+
+    /**
+     * Every page the whole analysis touched, in one list at the foot of the full-post view:
+     * each claim's searches, the pages its verdict cites, and the post-level reading the
+     * speaker block links to - which on a post with no checkable claim is all there is.
+     *
+     * Deduplicated on the URL, because two claims searching the same topic come back with
+     * the same pages, and a page carries the "cited" tag if any claim's verdict leaned on it.
+     */
+    _allSourcesBlock() {
+      const byUrl = new Map();
+      const citedUrls = new Set();
+      const add = (e) => {
+        if (!e || !e.url) return;
+        const k = srcKey(e.url);
+        const prev = byUrl.get(k);
+        // Keep the richer entry: the same page arrives with a snippet from a search and
+        // without one from a citation list.
+        if (!prev || (!prev.snippet && e.snippet)) byUrl.set(k, e);
+      };
+
+      for (const r of this.results.values()) {
+        if (r.state !== "done") continue;
+        for (const e of r.data.evidence || []) add(e);
+        for (const c of (r.data.claim_check && r.data.claim_check.sources) || []) {
+          add(c);
+          citedUrls.add(srcKey(c.url));
+        }
+      }
+      for (const s of (this.claimsData && this.claimsData.sources) || []) add(s);
+
+      const list = this._sourceList([...byUrl.values()], citedUrls);
+      return list ? `<div class="block allsrc">${list}</div>` : "";
     }
 
     _claimFooter() {
@@ -635,6 +680,7 @@
         ${this._whatIsMissing()}
         ${this._signalsBlock(d.rhetorical_signals)}
         ${this._speakerBlock(speaker, d.sources)}
+        ${this._allSourcesBlock()}
       </div>`;
     }
 
