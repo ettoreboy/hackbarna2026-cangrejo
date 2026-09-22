@@ -1,20 +1,26 @@
 version: 2
 updates:
+  # One pull request a month for the whole of requirements.txt, rather than
+  # one per package. A group needs an explicit `patterns`; without it every
+  # bump arrives on its own branch.
   - package-ecosystem: pip
     directory: "/"
     schedule:
       interval: monthly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     commit-message:
       prefix: "deps"
     groups:
-      # One PR a month for the routine bumps; anything major still comes alone.
-      minor-and-patch:
-        update-types: ["minor", "patch"]
+      python-deps:
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: monthly
+    open-pull-requests-limit: 2
     commit-message:
       prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
