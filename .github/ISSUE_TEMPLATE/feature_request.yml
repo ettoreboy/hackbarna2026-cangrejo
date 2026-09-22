@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest something Unfold should do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is hard or impossible today? Describe the situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it would live
+      options:
+        - Chrome extension
+        - Backend or prompts
+        - Eval and benchmarking
+        - Docs
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you have tried or considered instead
+
+  - type: markdown
+    attributes:
+      value: |
+        Scope note: this project covers the Nebius analyzer, Galtea eval and SLNG speech-to-text
+        tracks. Requests outside those, or that need a hosted service, are likely to be closed.

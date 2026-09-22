@@ -1,0 +1,78 @@
+name: Bug report
+description: Something in the extension or the backend does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A wrong or unfair verdict is not a bug — use **Analysis quality** for that.
+        This form is for code that misbehaves.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what you saw instead of what you expected.
+      placeholder: Clicked Unfold on a post with a quote tweet; the drawer opened empty.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - Chrome extension (drawer, button, card)
+        - Backend API
+        - Both, or not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Analyzer provider
+      description: The value of ANALYZER_PROVIDER, or the ?provider= you passed.
+      options:
+        - fake (offline)
+        - nebius
+        - gemini
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error output
+      description: >
+        Server output, or the browser console for an extension bug. This is rendered as code, so
+        no backticks needed. Remove any API key before pasting.
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The commit SHA, or the extension version from chrome://extensions.
+      placeholder: 1d97942, extension 0.3.0
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you open this
+      options:
+        - label: I ran `make test` and said above whether it passes
+        - label: There is no API key in anything I pasted
+          required: true

@@ -1,0 +1,9 @@
+# Ownership follows the table in CONTRIBUTING.md. A review request goes out
+# automatically when a pull request touches one of these paths.
+#
+# Add Diana's GitHub handle beside extension/ when she is a collaborator on
+# this repo — an unrecognised handle makes the whole file silently inert.
+
+*               @ettoreboy
+
+# /extension/   @ettoreboy @<diana-handle>

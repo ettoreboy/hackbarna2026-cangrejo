@@ -1,0 +1,65 @@
+name: Analysis quality
+description: A verdict, signal or missing-context note that is wrong or unfair
+labels: ["analysis"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Unfold judges the claim, never the post, and never labels a post true or false. If a
+        verdict reads as a judgement of the author, that is exactly the kind of report this form
+        is for.
+
+  - type: textarea
+    id: post
+    attributes:
+      label: The post
+      description: The URL, or the text if it has been deleted.
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: What Unfold said
+      description: Paste the block that is wrong — the claim, the verdict, the signal, the note.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What it should have said, and why
+      description: >
+        Point at the evidence. "The source says X" carries far more than "this is biased".
+    validations:
+      required: true
+
+  - type: dropdown
+    id: block
+    attributes:
+      label: Which block
+      options:
+        - Main claim — picked the wrong claim, or an opinion
+        - Claim check — wrong verdict, or a source that does not support it
+        - Missing context — wrong, one-sided, or not actually missing
+        - Rhetorical signals — wrong label, or a quote that is not verbatim
+        - Speaker context — not neutral, or factually wrong
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Provider and model
+      placeholder: nebius, openai/gpt-oss-120b, prompt v1, standard rigor
+
+  - type: checkboxes
+    id: fairness
+    attributes:
+      label: Acknowledgement
+      options:
+        - label: >
+            I am reporting an analysis that is wrong on the evidence, not one I disagree with
+            politically.
+          required: true

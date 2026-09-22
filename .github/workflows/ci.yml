@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # The suite is offline by default: pytest.ini excludes the `live` marker
+      # and the fake provider needs no keys.
+      ANALYZER_PROVIDER: fake
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run the offline test suite
+        run: pytest -q
+
+  contract:
+    name: Extension contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Rule 3 of CLAUDE.md: the taxonomy and verdicts hard-coded in
+      # extension/content/taxonomy.js must match backend/prompts/taxonomy.py.
+      - name: Check the backend and the extension still agree
+        run: python scripts/check_extension.py
+
+  secrets:
+    name: No secrets committed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail if a real .env is tracked
+        run: |
+          if git ls-files --error-unmatch .env .env.local >/dev/null 2>&1; then
+            echo "::error::.env or .env.local is tracked. Remove it from the index."
+            exit 1
+          fi
+          echo "No env file tracked."
+
+      - name: Fail if .env.example carries a filled-in key
+        run: |
+          if grep -nE '^[A-Z_]*(API_KEY|TOKEN|SECRET)=..+' .env.example; then
+            echo "::error::.env.example has a non-empty credential. Blank it."
+            exit 1
+          fi
+          echo "Every credential in .env.example is blank."

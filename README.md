@@ -1,5 +1,11 @@
 # Unfold
 
+[![CI](https://github.com/ettoreboy/unfold/actions/workflows/ci.yml/badge.svg)](https://github.com/ettoreboy/unfold/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
+[![Chrome MV3](https://img.shields.io/badge/chrome-MV3-4285F4.svg)](extension/manifest.json)
+[![Schema v3](https://img.shields.io/badge/schema-v3%20frozen-informational.svg)](docs/API.md)
+
 **A Chrome extension that pulls a post on X apart, claim first.** It finds the factual claims
 buried in the rhetoric, checks the one you pick against live web evidence, tells you what context
 is missing, names the persuasion techniques with the exact words that triggered them, and gives
@@ -249,8 +255,7 @@ docs/
   PROMPT_DESIGN.md               how a request is assembled, and why each rule exists
   TECHNIQUES.md                  every tactic and fallacy with detection cues
   ANALYSIS.md                    critical analysis of the original spec, written before any code
-  CLIENT_HANDOFF.md              brief for the extension owner
-  VIDEO_SCRIPT.md                the demo script
+  README.md                      index of the above
 ```
 
 ## Known limits
@@ -277,3 +282,26 @@ identifies the extension user.
 | `extension/` | Diana |
 
 The contract between the two is `docs/API.md`. Working agreement: `CLAUDE.md`.
+
+## Contributing
+
+Bug reports, prompt improvements and better benchmark posts are all welcome.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the three-command setup and the four rules that will fail a
+pull request — the frozen schema, the two-sided taxonomy, field meaning belonging in the prompt,
+and the byte-identical `standard` prompts.
+
+You do not need an API key. `make run-fake` starts a deterministic offline analyser and the whole
+test suite runs against it in about five seconds.
+
+- Found a bug or want a feature → [open an issue](https://github.com/ettoreboy/unfold/issues/new/choose)
+- Found a security problem → [SECURITY.md](SECURITY.md), not a public issue
+- Posting or reviewing → [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
+## Licence
+
+[MIT](LICENSE). Use it, fork it, ship it.
+
+The benchmark posts under `tests/fixtures/` quote public figures for the purpose of testing an
+analyser. Including a post is not an endorsement of it, and the set is spread across the political
+spectrum deliberately. Unfold judges a claim against the sources it lists, and never the post or
+its author.
