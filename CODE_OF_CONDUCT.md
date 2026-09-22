@@ -32,14 +32,6 @@ Contributions that select posts to embarrass one side rather than to test the an
 scope and will be closed. The benchmark set aims for a spread across the political spectrum on
 purpose.
 
-## Enforcement
-
-Report a problem to **ettore@amphoralogistics.com**. Reports are handled privately. The maintainers
-will look at what happened and respond within a week, with anything from a private word to a
-permanent block from the repository.
-
-Maintainers who do not hold to this document are subject to it the same as anyone else.
-
 ## Attribution
 
 Adapted from the [Contributor Covenant](https://www.contributor-covenant.org/), version 2.1, with
